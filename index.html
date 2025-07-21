@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>セルフオーサーシップ理論フレームワーク</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+            line-height: 1.8;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            margin-top: 10px;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #764ba2;
+            margin-top: 25px;
+        }
+        .dimension-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .dimension-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #667eea;
+        }
+        .phase-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .phase-card {
+            flex: 1;
+            min-width: 250px;
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .phase-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .phase-1 { border-color: #ff6b6b; }
+        .phase-2 { border-color: #ffd43b; }
+        .phase-3 { border-color: #51cf66; }
+        .principle {
+            background: #e3f2fd;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 5px solid #2196f3;
+        }
+        .checklist {
+            background: #f0f4ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .checklist h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .checklist ul {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        .checklist li:before {
+            content: "□";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .example {
+            background: #e8f5e9;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 4px solid #4caf50;
+            font-style: italic;
+        }
+        .arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .practical-tips {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #ffc107;
+            margin: 20px 0;
+        }
+        .advanced-section {
+            background: #f0f7ff;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+        }
+        .sub-phase {
+            background: #fafbfc;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+        .sub-phase h4 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        .lpm-step {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 4px solid #2196f3;
+        }
+        .lpm-step h5 {
+            margin: 0 0 10px 0;
+            color: #2196f3;
+        }
+        .toggle-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: background 0.3s;
+        }
+        .toggle-button:hover {
+            background: #764ba2;
+        }
+        .collapsible {
+            display: none;
+            margin-top: 20px;
+        }
+        .collapsible.active {
+            display: block;
+        }
+        .journey-table {
+            overflow-x: auto;
+        }
+        .journey-table table {
+            font-size: 0.9em;
+        }
+        .journey-table td {
+            vertical-align: top;
+        }
+        @media (max-width: 768px) {
+            .phase-container {
+                flex-direction: column;
+            }
+            .dimension-grid {
+                grid-template-columns: 1fr;
+            }
+            .journey-table {
+                overflow-x: scroll;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>セルフオーサーシップ理論フレームワーク</h1>
+        <p class="subtitle">大学における学生の成長支援のための実践的ガイド</p>
+    </div>
+
+    <div class="section">
+        <h2>🎯 セルフオーサーシップとは？</h2>
+        <p><strong>セルフオーサーシップ</strong>とは、<span class="highlight">「自己の信念、アイデンティティ、社会関係を定義する内的能力」</span>のことです。</p>
+        <p>学生が外部の権威や期待に依存するのではなく、自分自身の内なる声に基づいて人生を切り開いていく力を指します。これは21世紀の高等教育における重要な学習成果として位置づけられています。</p>
+        
+        <div class="practical-tips">
+            <strong>💡 なぜ重要？</strong>
+            <ul>
+                <li>批判的思考力と主体的な学習態度の育成</li>
+                <li>複雑な社会で自律的に生きる力の獲得</li>
+                <li>多様な価値観の中で自分の軸を持つ力の形成</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📊 3つの成長次元</h2>
+        <p>セルフオーサーシップの成長は、以下の3つの次元で捉えることができます：</p>
+        
+        <div class="dimension-grid">
+            <div class="dimension-card">
+                <h3>🧠 認識論的次元</h3>
+                <p><strong>問い：「私はどのように知るのか？」</strong></p>
+                <p>知識や真実をどのように捉え、理解するかに関する成長</p>
+                <div class="example">
+                    例：「教科書に書いてあるから正しい」から「複数の視点を比較検討して自分の考えを形成する」へ
+                </div>
+            </div>
+            
+            <div class="dimension-card">
+                <h3>🪞 対自関係次元</h3>
+                <p><strong>問い：「私は何者か？」</strong></p>
+                <p>自己アイデンティティや価値観の形成に関する成長</p>
+                <div class="example">
+                    例：「親が期待する自分」から「自分が選択した価値観に基づく自分」へ
+                </div>
+            </div>
+            
+            <div class="dimension-card">
+                <h3>🤝 対人関係次元</h3>
+                <p><strong>問い：「他者とどのような関係を望むか？」</strong></p>
+                <p>他者との関係性の構築に関する成長</p>
+                <div class="example">
+                    例：「承認を得るための関係」から「相互に自立した上での協働関係」へ
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🚀 成長の3局面（基本）</h2>
+        <p>学生は以下の3つの局面を通じて成長していきます：</p>
+        
+        <div class="phase-container">
+            <div class="phase-card phase-1">
+                <h3>1️⃣ 外的公式に従う局面</h3>
+                <p><strong>特徴：</strong></p>
+                <ul>
+                    <li>権威者の言うことを鵜呑みにする</li>
+                    <li>他者からの承認を求める</li>
+                    <li>外的な期待に自己を合わせる</li>
+                </ul>
+                <p><strong>学生の状態：</strong><br>
+                「先生が言ったから」「みんながそうしているから」という理由で行動</p>
+            </div>
+            
+            <div class="phase-card phase-2">
+                <h3>2️⃣ 岐路の局面</h3>
+                <p><strong>特徴：</strong></p>
+                <ul>
+                    <li>外的権威への疑問が生じる</li>
+                    <li>内なる声の必要性を認識</li>
+                    <li>葛藤や不協和を経験</li>
+                </ul>
+                <p><strong>学生の状態：</strong><br>
+                「本当にそれでいいのか？」「自分の考えは？」という問いが生まれる</p>
+            </div>
+            
+            <div class="phase-card phase-3">
+                <h3>3️⃣ セルフオーサーシップ局面</h3>
+                <p><strong>特徴：</strong></p>
+                <ul>
+                    <li>内なる声を信頼する</li>
+                    <li>自己決定に基づく行動</li>
+                    <li>内なる基盤の構築</li>
+                </ul>
+                <p><strong>学生の状態：</strong><br>
+                「私はこう考える」「私の価値観に基づいて行動する」</p>
+            </div>
+        </div>
+        
+        <button class="toggle-button" onclick="toggleSection('detailed-journey')">🔍 より詳細な成長の旅を見る</button>
+        
+        <div id="detailed-journey" class="collapsible">
+            <div class="advanced-section">
+                <h3>📚 セルフオーサーシップへの成長の旅（詳細版）</h3>
+                <p>各次元における成長の詳細な様相を以下に示します：</p>
+                
+                <div class="journey-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>次元</th>
+                                <th>外的公式</th>
+                                <th>岐路</th>
+                                <th>セルフオーサーシップ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>認識論的</strong></td>
+                                <td>
+                                    • 知識の源泉として権威に信頼を譲る<br>
+                                    • 知識を確実（または部分的に確実）と見る<br>
+                                    • 外的に規定される信念となるような知識命題を評価するための内なる基盤を欠く
+                                </td>
+                                <td>
+                                    • 不確実性と多元的視点の自覚と受容を進める<br>
+                                    • 権威者の知識を受容することから知識命題を採用するパーソナルなプロセスへ移る<br>
+                                    • 信念を選択するために責任を持つ必要性を認める
+                                </td>
+                                <td>
+                                    • 知識を文脈的なものと見る<br>
+                                    • 利用可能なエビデンスや参照枠組みの観点で判断を構築・評価・解釈する<br>
+                                    • 内的信念システムを発達させる
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>対自関係</strong></td>
+                                <td>
+                                    • 自分の価値観や社会的アイデンティティの自覚を欠く<br>
+                                    • アイデンティティの諸要素の調整を欠く<br>
+                                    • 他者からの肯定を要する
+                                </td>
+                                <td>
+                                    • 外的な他者の物の見方から区別される、自身の価値観とアイデンティティの感覚の自覚を進める<br>
+                                    • 生じつつある内的価値観と外的圧力との間に緊張がある<br>
+                                    • 自らのアイデンティティを作り出すために責任を持つ必要性を認める
+                                </td>
+                                <td>
+                                    • 内的に生成し、経験と選択の解釈を調整する<br>
+                                    • 自己の感覚をつくる際に自身の価値観とアイデンティティを選択する<br>
+                                    • 一貫した内的な自己の感覚に根ざす
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>対人関係</strong></td>
+                                <td>
+                                    • 同じような他者たちとの依存関係がアイデンティティと必要な肯定の源泉となる<br>
+                                    • 他者の肯定を得ていくこととしての関係への参加
+                                </td>
+                                <td>
+                                    • 依存関係の限界への自覚を進める<br>
+                                    • 自身のアイデンティティを自立的な諸関係を構築することへ持っていく必要性を認める<br>
+                                    • 自己を再構築する、または依存関係から脱出させるために闘う
+                                </td>
+                                <td>
+                                    • 多様な他者たちと真正な相互依存関係に取り組むことができる<br>
+                                    • 関係性の必要性を相互的に交渉する<br>
+                                    • 他者の視点を本当の意味で考慮に入れる
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🔬 成長局面の精緻化</h2>
+        <p>ウォバシュ全国調査研究により、各局面にはさらに詳細な下位局面があることが明らかになりました。</p>
+        
+        <button class="toggle-button" onclick="toggleSection('refined-phases')">📊 精緻化された成長局面を見る</button>
+        
+        <div id="refined-phases" class="collapsible">
+            <div class="advanced-section">
+                <h3>外的な意味形成局面の詳細</h3>
+                
+                <div class="sub-phase">
+                    <h4>Ea: 外的権威を信頼する</h4>
+                    <p>一貫して盲目的に外的資源を信頼し、そのことの欠点の可能性を認識することもない。</p>
+                </div>
+                
+                <div class="sub-phase">
+                    <h4>Eb: 外的権威を信頼することとの緊張</h4>
+                    <p>一貫して外的資源を信頼するが、そうすることの緊張を経験する（とくに外的資源の間に葛藤がある場合）。葛藤を解消しようとして複数の権威の方を見る。</p>
+                </div>
+                
+                <div class="sub-phase">
+                    <h4>Ec: 外的権威を信頼することの欠点を認識する</h4>
+                    <p>外的権威への信頼を継続するが、そのことの欠点を認識している。</p>
+                </div>
+                
+                <h3>岐路局面の詳細</h3>
+                
+                <div class="sub-phase">
+                    <h4>E(I): 外的権威に疑問を持つ（岐路に入る）</h4>
+                    <p>内なる声の必要性を自覚するも、外的資源への信頼を継続する。外的意味形成のジレンマを自覚するが、どう進めばいいかわからない。</p>
+                </div>
+                
+                <div class="sub-phase">
+                    <h4>E-I: 内なる声を構築する</h4>
+                    <p>意味形成の新しい仕方を構築するよう能動的に動き始めるが、以前の外的位置に「後退する」こともある。</p>
+                </div>
+                
+                <div class="sub-phase">
+                    <h4>I-E: 内なる声を聴く（岐路から出る）</h4>
+                    <p>内なる声を注意深く聞き取り始め、外的資源を押しのけつつある。外的資源がまだ強く、内なる声を一貫して維持することを難しくしている。</p>
+                </div>
+                
+                <div class="sub-phase">
+                    <h4>I(E): 内なる声を育む</h4>
+                    <p>内なる声を能動的に育み始め、内なる声が多くの外的資源を媒介する。他者の視点が自身の視点を包摂してしまうそれまでの傾性に戻らないように意識する。</p>
+                </div>
+                
+                <h3>内的な意味形成（セルフオーサーシップ）局面の詳細</h3>
+                
+                <div class="sub-phase">
+                    <h4>Ia: 内なる声を信頼する</h4>
+                    <p>信念、価値、アイデンティティ、関係を洗練するのに十分なほど内なる声を信頼する。反応を形作り、外的資源を管理するのに内なる声を活用する。</p>
+                </div>
+                
+                <div class="sub-phase">
+                    <h4>Ib: 内なる基盤を築く</h4>
+                    <p>外的資源にどう反応するかを導く人生哲学へのコミットメントを形成するのに十分なほど内なる声を信頼する。</p>
+                </div>
+                
+                <div class="sub-phase">
+                    <h4>Ic: 内なるコミットメントを確保する</h4>
+                    <p>人生哲学を自分の存在の核として固め、それを第二の性質として生きる。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🛠️ 実践原則：ラーニング・パートナーシップ・モデル（LPM）</h2>
+        <p>学生のセルフオーサーシップ成長を支援する3つの実践原則：</p>
+        
+        <div class="principle">
+            <h3>1. 学習者の知る能力を確かめる</h3>
+            <p>学生がどのように知識を捉えているかを理解し、その段階に応じたサポートを提供する</p>
+            <p><strong>実践例：</strong>「なぜそう思うの？」「どうやってその結論に至った？」という問いかけ</p>
+        </div>
+        
+        <div class="principle">
+            <h3>2. 学生の学びをその学生の経験の中に位置づける</h3>
+            <p>抽象的な学びではなく、学生自身の経験と結びつけて理解を深める</p>
+            <p><strong>実践例：</strong>「この理論はあなたの経験とどう関連する？」という振り返り</p>
+        </div>
+        
+        <div class="principle">
+            <h3>3. 学びを相互的な意味構成と定義する</h3>
+            <p>教員と学生、学生同士が対等な立場で意味を構築していく</p>
+            <p><strong>実践例：</strong>ディスカッションやグループワークでの協働的な知識構築</p>
+        </div>
+        
+        <button class="toggle-button" onclick="toggleSection('lpm-steps')">📋 LPM実践の10ステップを見る</button>
+        
+        <div id="lpm-steps" class="collapsible">
+            <div class="advanced-section">
+                <h3>ラーニング・パートナーシップ・モデル（LPM）実践の10ステップ</h3>
+                
+                <h4>フェーズ1：学習目標と学習者のセルフオーサーシップ能力をアセスメントする</h4>
+                
+                <div class="lpm-step">
+                    <h5>ステップ1：文脈の選定</h5>
+                    <p>学生や同僚との関わりから、LPMを用いてセルフオーサーシップを向上するのに適した実践は何か？</p>
+                    <p><em>例：卒業論文、ピア・サポート、キャリア相談</em></p>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ2：その文脈での学習目標の設定</h5>
+                    <ul>
+                        <li>その文脈で現在、達成しようとしている学習成果は何か？</li>
+                        <li>セルフオーサーシップをより包括的な目標と考えると、現在設定している学習成果＝目標をどのように設定することになるか？</li>
+                        <li>参加者に何をよりよく理解してもらいたいか？何をよりうまく取り組めるようになってもらいたいか？</li>
+                    </ul>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ3：セルフオーサーシップの視点から学習目標の検討</h5>
+                    <ul>
+                        <li><strong>認知能力：</strong>それらの学習目標を達成するのに、どのような仕方で知識を構築するか？</li>
+                        <li><strong>対自関係能力：</strong>自分自身をどのような仕方で見て理解することが求められるか？</li>
+                        <li><strong>対人関係能力：</strong>他者との関係の中の自分自身をどのような仕方で理解することが求められるか？</li>
+                    </ul>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ4：その文脈での学習者のセルフオーサーシップ特徴の考慮</h5>
+                    <ul>
+                        <li>学習者が共通して用いる知識構築の仕方は？</li>
+                        <li>学習者によって示される自分自身の見方は？</li>
+                        <li>学習者が示す他者との関係の中の自分自身の見方は？</li>
+                    </ul>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ5：学習目標と学習者能力の間の整合性と不整合の特定</h5>
+                    <ul>
+                        <li>学習目標と学習者のセルフオーサーシップ能力はどのように結びつくか？</li>
+                        <li>それらの間にある不整合はどこか？</li>
+                        <li>どんな成長目標が、必要な能力と狙いとする学習成果の間を橋渡しするのに役立つか？</li>
+                    </ul>
+                </div>
+                
+                <h4>フェーズ2：「進化の架け橋」をデザインする</h4>
+                
+                <div class="lpm-step">
+                    <h5>ステップ6：成長する「カリキュラム」の素描</h5>
+                    <ul>
+                        <li>学習目標と成長目標は、どのように時間をかけてステップに変換されるか？</li>
+                        <li>学習者への関与の長さにともなって、最初の時点で、学習目標と成長目標はどのような形態となるか？</li>
+                        <li>ステップのどれがこれまでに通過し、どれがこれから向かう必要のあるものか？</li>
+                    </ul>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ7：3つの想定に取り組む</h5>
+                    <p><strong>知識は複雑で社会的に構築される / 自己が知識構築の中心である / 熟練と権威は相互に共有される</strong></p>
+                    <ul>
+                        <li>あなたの実践領域において、これらの想定は現在どのような仕方で示されているか？</li>
+                        <li>どうすればより効果的にこれらの想定を学習者に伝えられるか？</li>
+                    </ul>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ8：3つの原則に取り組む</h5>
+                    <p>学習者の知る能力を確かめる / 学習を学習者の経験に位置づける / 学習者と意味を相互構築する</p>
+                    <ul>
+                        <li>これらの原則は現在どのような仕方で示されているか？</li>
+                        <li>どうすればより効果的にこれらの原則を学習者に伝えられるか？</li>
+                    </ul>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ9：整合性と不整合を再吟味する</h5>
+                    <ul>
+                        <li>新しい計画は、整合しているところを揺るがさないか？</li>
+                        <li>この計画は、どの不整合に取り組むのか？</li>
+                        <li>取り組むべき不整合のうち、残るものはどれか？</li>
+                    </ul>
+                </div>
+                
+                <div class="lpm-step">
+                    <h5>ステップ10：効果を評価するための計画を素描する</h5>
+                    <ul>
+                        <li>参加者のセルフオーサーシップ能力を促進するのにどれほど効果があったかを決めるエビデンスとして使えるものは何か？</li>
+                        <li>そのエビデンスはどのように集められるだろうか？</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📋 実践チェックリスト</h2>
+        
+        <div class="checklist">
+            <h4>プログラム開発時の活用</h4>
+            <ul>
+                <li>学生に「自分の考え」を求める機会を設けているか</li>
+                <li>多様な視点に触れる機会を提供しているか</li>
+                <li>失敗を恐れず挑戦できる環境を作っているか</li>
+                <li>振り返りと省察の時間を確保しているか</li>
+                <li>学生の成長段階に応じた課題設定をしているか</li>
+            </ul>
+        </div>
+        
+        <div class="checklist">
+            <h4>学生支援・アドバイジングでの活用</h4>
+            <ul>
+                <li>学生の現在の成長局面を把握しているか</li>
+                <li>答えを与えるのではなく、問いを投げかけているか</li>
+                <li>学生の内なる声に耳を傾けているか</li>
+                <li>適切なチャレンジとサポートのバランスを取っているか</li>
+                <li>学生の自己決定を尊重しているか</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📈 成長を促す具体的な取り組み例</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>取り組み</th>
+                    <th>期待される効果</th>
+                    <th>対応する次元</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ポートフォリオ作成</td>
+                    <td>自己の成長過程の可視化と省察</td>
+                    <td>対自関係</td>
+                </tr>
+                <tr>
+                    <td>ディベート・討論</td>
+                    <td>多様な視点の理解と自己の立場の明確化</td>
+                    <td>認識論的</td>
+                </tr>
+                <tr>
+                    <td>協働プロジェクト</td>
+                    <td>相互依存的な関係構築の経験</td>
+                    <td>対人関係</td>
+                </tr>
+                <tr>
+                    <td>リフレクション・ジャーナル</td>
+                    <td>内なる声の発見と育成</td>
+                    <td>全次元</td>
+                </tr>
+                <tr>
+                    <td>メンタリング・プログラム</td>
+                    <td>対話を通じた自己理解の深化</td>
+                    <td>全次元</td>
+                </tr>
+                <tr>
+                    <td>サービス・ラーニング</td>
+                    <td>社会的文脈での自己の位置づけの理解</td>
+                    <td>全次元</td>
+                </tr>
+                <tr>
+                    <td>ライティング・カリキュラム</td>
+                    <td>段階的な知的成長と自己表現力の育成</td>
+                    <td>認識論的・対自関係</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>💡 実践のポイント</h2>
+        
+        <div class="practical-tips">
+            <h3>成長を支援する際の留意点</h3>
+            <ul>
+                <li><strong>非線形な成長を理解する：</strong>学生は3つの局面を行きつ戻りつしながら成長します</li>
+                <li><strong>次元間の連動を意識する：</strong>3つの次元は相互に影響し合います</li>
+                <li><strong>文脈の重要性：</strong>学生の背景や環境を考慮したサポートが必要です</li>
+                <li><strong>不協和の活用：</strong>葛藤や矛盾は成長の契機となります</li>
+                <li><strong>長期的視点：</strong>セルフオーサーシップの成長は時間がかかるプロセスです</li>
+                <li><strong>対自関係次元が中心：</strong>セルフオーサーシップは対自関係次元を軸とする成長です</li>
+            </ul>
+        </div>
+        
+        <div class="practical-tips">
+            <h3>成長の契機となるもの</h3>
+            <ul>
+                <li><strong>外的意味形成段階：</strong>外的権威や期待の間の衝突・葛藤（不協和）</li>
+                <li><strong>岐路段階：</strong>内なる声の発見と活用経験</li>
+                <li><strong>セルフオーサーシップ段階：</strong>内なる基盤に基づく自己決定と行動の積み重ね</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📚 参考情報</h2>
+        <p>このフレームワークは、Baxter Magolda（2001）によるセルフオーサーシップ理論および河井亨（2022）「大学生におけるセルフ・オーサーシップの成長理論」に基づいて作成されています。</p>
+        <p>より詳細な理論的背景や実践事例については、原著論文をご参照ください。</p>
+    </div>
+
+    <script>
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            section.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>
