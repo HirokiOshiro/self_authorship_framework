@@ -876,18 +876,18 @@
         
         <div id="detailed-journey" class="collapsible">
             <div class="advanced-section">
-                <h3>📚 セルフオーサーシップへの成長の旅（詳細版）</h3>
-                <p>各次元における成長の詳細な様相を以下に示します：</p>
+                <h3>🗺️ セルフオーサーシップへの成長の旅（詳細版）</h3>
+                <p>各次元における成長の詳細な様相を以下の表に示します：</p>
                 
                 <!-- Canvas 2Dビジュアライゼーション統合エリア -->
                 <div class="canvas-2d-integration">
-                    <h4>🎭 成長の旅のビジュアライゼーション</h4>
-                    <p>以下のインタラクティブなアニメーションは、セルフオーサーシップの成長イメージの表現です。マウスやタッチで操作してみてください。<br>🎨：これはセルフオーサーシップの成長を集団のダイナミクスという観点で比喩的に表現した一例です。</p>
+                    <h4>🗺️ 成長の旅のビジュアライゼーション</h4>
+                    <p>以下のインタラクティブなアニメーションは、セルフオーサーシップの成長イメージの表現です。マウスで操作してみてください。<br>🎨：これはセルフオーサーシップの成長を集団のダイナミクスという観点で比喩的に表現した一例です。</p>
 
                     <div id="journey-canvas-container" class="journey-canvas-container">
                         <canvas id="journey-canvas"></canvas>
                         <div class="journey-controls">
-                            <h5>🎭 成長の旅</h5>
+                            <h5>🗺️ 成長の旅</h5>
                             <div class="journey-stage-info" id="journey-stageInfo">
                                 重力の支配<br><small>外部の権威に従属している状態</small>
                             </div>
@@ -1005,14 +1005,14 @@
         <h2>🔬 成長局面の精緻化</h2>
         <p>ウォバシュ全国調査研究により、各局面にはさらに詳細な下位局面があることが明らかになりました。</p>
         
-        <button class="toggle-button" onclick="toggleSection('refined-phases')">📊 精緻化された成長局面を見る</button>
+        <button class="toggle-button" onclick="toggleSection('refined-phases')">🔬 精緻化された成長局面を見る</button>
         
         <div id="refined-phases" class="collapsible">
             <div class="advanced-section">
                 <!-- 3D可視化統合エリア -->
                 <div class="sa-3d-integration">
-                    <h4>🎨 精緻化された成長局面の3D可視化</h4>
-                    <p>以下の3D空間で、各成長段階を視覚的に体験できます。下のテキストの段階名をクリックして切り替えてください。<br>🎨：これは個人内のセルフオーサーシップの成長を比喩的に表現した一例です。</p>
+                    <h4>🔬 成長局面の変容のイメージ</h4>
+                    <p>以下の3Dアニメーションで、各成長段階を視覚的に体験できます。下のテキストの段階名をクリックして切り替えてください。<br>🎨：これは個人内のセルフオーサーシップの成長を比喩的に表現した一例です。</p>
 
                     <div id="refined-3d-container" class="sa-3d-container">
                         <div id="refined-3d-scene">
@@ -4766,6 +4766,12 @@
                 this.shape = 'circle';
                 this.connections = [];
                 
+                // 接続フェードイン制御用プロパティ
+                this.connectionFadeOpacity = 0.0;
+                this.connectionFadeStartTime = null;
+                this.connectionFadeDuration = 1500; // 1.5秒でフェードイン完了
+                this.connectionFadeDelay = 1500;    // 1.5秒の遅延後にフェードイン開始
+                
                 // 色彩システム
                 this.originalHue = Math.random() * 360;
                 this.currentHue = this.originalHue;
@@ -4878,7 +4884,26 @@
                         mouseY = this.y || 0;
                     }
                     
-                    // 重力からの解放
+                    // 初期拡散フェーズ - ステージ移行直後に積極的に拡散
+                    if (!this.hasInitialDispersed) {
+                        this.hasInitialDispersed = true;
+                        this.initialDispersionTimer = 0;
+                        
+                        // 初期拡散方向をランダムに設定
+                        this.dispersalDirection = Math.random() * Math.PI * 2;
+                        this.dispersalForce = 0.4 + Math.random() * 0.3; // 0.4-0.7の拡散力（従来の半分程度）
+                    }
+                    
+                    // 初期拡散力の適用（最初の4秒間に延長してより緩やかに）
+                    if (this.initialDispersionTimer < 240) { // 60fps * 4秒
+                        this.initialDispersionTimer++;
+                        const dispersionStrength = Math.max(0, 1 - (this.initialDispersionTimer / 240));
+                        
+                        this.vx += Math.cos(this.dispersalDirection) * this.dispersalForce * dispersionStrength * 0.01; // 0.02から0.01に減少
+                        this.vy += Math.sin(this.dispersalDirection) * this.dispersalForce * dispersionStrength * 0.01;
+                    }
+                    
+                    // 重力からの解放（従来より弱く調整）
                     const dx = mouseX - this.x;
                     const dy = mouseY - this.y;
                     let distance = Math.sqrt(dx * dx + dy * dy);
@@ -4889,7 +4914,8 @@
                     }
                     
                     if (isFinite(distance) && distance > 0) {
-                        const force = 0.0005 * (1 - this.autonomy);
+                        // 重力の影響を大幅に減少（自律性重視）
+                        const force = 0.0002 * (1 - this.autonomy) * Math.max(0, 1 - this.autonomy);
                         if (isFinite(force)) {
                             const forceX = (dx / distance) * force;
                             const forceY = (dy / distance) * force;
@@ -4902,24 +4928,45 @@
                     }
 
                     // 急速な自律性の発達
-                    this.autonomy = Math.min(0.9, this.autonomy + 0.005);
+                    this.autonomy = Math.min(0.95, this.autonomy + 0.008);
                     
-                    // 創造的な軌道（安全性チェック付き）
+                    // 創造的な軌道（安全性チェック付き）- 拡散力強化
                     if (isFinite(this.personalDirection)) {
-                        this.personalDirection += 0.01 + (this.autonomy * 0.02);
-                        const creativityForce = 0.003 * this.autonomy;
-                        if (isFinite(creativityForce)) {
-                            this.vx += Math.cos(this.personalDirection) * creativityForce;
-                            this.vy += Math.sin(this.personalDirection) * creativityForce;
+                        this.personalDirection += 0.012 + (this.autonomy * 0.02); // 回転速度を少し緩やかに
+                        const creativityForce = 0.004 * this.autonomy + 0.001; // 基本創造力を減少
+                        
+                        // 拡散促進力 - 他のパーティクルとの距離に基づく反発力
+                        const expansionForce = 0.002 * this.autonomy; // 拡散力を半分に
+                        
+                        if (isFinite(creativityForce) && isFinite(expansionForce)) {
+                            const baseCreativeX = Math.cos(this.personalDirection) * creativityForce;
+                            const baseCreativeY = Math.sin(this.personalDirection) * creativityForce;
+                            
+                            // 拡散方向への追加力
+                            const expansionX = Math.cos(this.personalDirection + Math.PI/4) * expansionForce;
+                            const expansionY = Math.sin(this.personalDirection + Math.PI/4) * expansionForce;
+                            
+                            this.vx += baseCreativeX + expansionX;
+                            this.vy += baseCreativeY + expansionY;
                         }
                     } else {
                         this.personalDirection = Math.random() * Math.PI * 2;
                     }
 
-                    // 生き生きとした振動（安全性チェック付き）
+                    // 境界での反発力強化（画面端からの自律的反発）
+                    const canvas = document.getElementById('growth-visualization-canvas');
+                    if (canvas) {
+                        const margin = 50;
+                        if (this.x < margin) this.vx += 0.005 * this.autonomy; // 境界反発力も半減
+                        if (this.x > canvas.width - margin) this.vx -= 0.005 * this.autonomy;
+                        if (this.y < margin) this.vy += 0.005 * this.autonomy;
+                        if (this.y > canvas.height - margin) this.vy -= 0.005 * this.autonomy;
+                    }
+
+                    // 生き生きとした振動（安全性チェック付き）- 活発性向上
                     if (isFinite(this.vibrationPhase) && isFinite(this.personalFrequency)) {
-                        this.vibrationPhase += this.personalFrequency * (2 + this.autonomy);
-                        const sizeModifier = Math.sin(this.vibrationPhase * 2) * (1 + this.autonomy * 2);
+                        this.vibrationPhase += this.personalFrequency * (2.5 + this.autonomy * 1.5);
+                        const sizeModifier = Math.sin(this.vibrationPhase * 2) * (1.2 + this.autonomy * 2.5);
                         if (isFinite(sizeModifier)) {
                             this.size = this.baseSize + sizeModifier;
                         } else {
@@ -4927,21 +4974,21 @@
                         }
                     } else {
                         this.vibrationPhase = Math.random() * Math.PI * 2;
-                        this.personalFrequency = 0.01 + Math.random() * 0.02;
+                        this.personalFrequency = 0.015 + Math.random() * 0.025; // 振動頻度向上
                         this.size = this.baseSize;
                     }
                     
-                    // 独自色彩の確立（安全性チェック付き）
+                    // 独自色彩の確立（安全性チェック付き）- より鮮やかに
                     if (isFinite(this.originalHue) && isFinite(this.personalDirection)) {
-                        this.currentHue = this.originalHue + (Math.sin(this.personalDirection) * 60);
-                        this.saturation = 60 + (this.autonomy * 30);
-                        this.lightness = 70 + (Math.sin(this.vibrationPhase) * 25);
-                        this.glow = this.autonomy * 0.8;
+                        this.currentHue = this.originalHue + (Math.sin(this.personalDirection) * 90); // 色相変化拡大
+                        this.saturation = 70 + (this.autonomy * 25); // 彩度向上
+                        this.lightness = 65 + (Math.sin(this.vibrationPhase) * 30); // 明度変化拡大
+                        this.glow = this.autonomy * 1.2; // グロー効果強化
                     } else {
                         this.currentHue = this.originalHue || Math.random() * 360;
-                        this.saturation = 70;
-                        this.lightness = 75;
-                        this.glow = 0.5;
+                        this.saturation = 75;
+                        this.lightness = 70;
+                        this.glow = 0.7;
                     }
                     
                     // 多様な形状（安全性チェック付き）
@@ -4955,23 +5002,49 @@
                         this.shape = 'circle';
                     }
 
-                    // 速度制限（発散防止）
-                    const maxVelocity = 5;
+                    // 摩擦の軽減（自律性が高いほど慣性を保持）
+                    const frictionReduction = 1 - (this.autonomy * 0.3);
+                    this.vx *= (0.985 + (this.autonomy * 0.01)); // 摩擦軽減
+                    this.vy *= (0.985 + (this.autonomy * 0.01)); // 摩擦軽減
+
+                    // 速度制限（発散防止）- 上限緩和
+                    const maxVelocity = 2.5 + (this.autonomy * 2.5); // 自律性に応じて最大速度向上（2.5-5.0の範囲）
                     this.vx = Math.max(-maxVelocity, Math.min(maxVelocity, this.vx || 0));
                     this.vy = Math.max(-maxVelocity, Math.min(maxVelocity, this.vy || 0));
                     
                 } catch (error) {
                     console.error('updateCreativeScattering error:', error);
                     // エラー時は安全な値にリセット
-                    this.autonomy = 0.5;
+                    this.autonomy = 0.3;
                     this.size = this.baseSize;
                     this.shape = 'circle';
                     this.vx = (this.vx || 0) * 0.5;
                     this.vy = (this.vy || 0) * 0.5;
+                    this.hasInitialDispersed = false;
+                    this.personalDirection = Math.random() * Math.PI * 2;
                 }
             }
 
             updateCosmicDance(mouseX, mouseY, particles) {
+                // 接続フェードイン制御の初期化
+                if (this.connectionFadeStartTime === null) {
+                    this.connectionFadeStartTime = Date.now();
+                    this.connectionFadeOpacity = 0.0;
+                }
+                
+                // フェードイン進行度の計算
+                const currentTime = Date.now();
+                const timeSinceStageStart = currentTime - this.connectionFadeStartTime;
+                
+                if (timeSinceStageStart >= this.connectionFadeDelay) {
+                    // 遅延期間経過後、フェードイン開始
+                    const fadeProgress = Math.min(1.0, (timeSinceStageStart - this.connectionFadeDelay) / this.connectionFadeDuration);
+                    this.connectionFadeOpacity = fadeProgress;
+                } else {
+                    // まだ遅延期間中
+                    this.connectionFadeOpacity = 0.0;
+                }
+                
                 // 相互作用の準備
                 this.connections = [];
                 
@@ -5289,13 +5362,15 @@
             }
 
             drawConnections(ctx) {
-                if (this.connections.length === 0) return;
+                if (this.connections.length === 0 || this.connectionFadeOpacity <= 0) return;
                 
                 ctx.save();
                 this.connections.forEach((connection, index) => {
                     if (Date.now() % 2 === 0 && index % 2 === 1) return;
                     
-                    ctx.globalAlpha = Math.min(0.6, connection.strength * 0.5);
+                    // フェードイン透明度を適用
+                    const baseOpacity = Math.min(0.6, connection.strength * 0.5);
+                    ctx.globalAlpha = baseOpacity * this.connectionFadeOpacity;
                     
                     const avgHue = (this.currentHue + connection.particle.currentHue) / 2;
                     ctx.strokeStyle = `hsl(${avgHue % 360}, 60%, 70%)`;
@@ -5372,11 +5447,11 @@
             },
             {
                 title: "創造的な散乱",
-                description: "個性が芽吹き、美しい軌道を描き始める"
+                description: "個性が芽吹き、自律的な動きを始める"
             },
             {
                 title: "創発的相互作用",
-                description: "自律的な自己の相互ネットワークの創発"
+                description: "自律的な主体の相互ネットワークの創発"
             }
         ];
 
@@ -5583,12 +5658,30 @@
                         
                         if (journeyCurrentStage === 0) {
                             particle.autonomy = 0;
+                            // 接続フェード状態リセット
+                            particle.connectionFadeStartTime = null;
+                            particle.connectionFadeOpacity = 0.0;
                         } else if (journeyCurrentStage === 1) {
                             particle.autonomy = Math.max(0, particle.autonomy);
+                            // 接続フェード状態リセット
+                            particle.connectionFadeStartTime = null;
+                            particle.connectionFadeOpacity = 0.0;
                         } else if (journeyCurrentStage === 2) {
                             particle.autonomy = Math.max(0.1, particle.autonomy);
+                            // 創造的散乱ステージ移行時の初期化
+                            particle.hasInitialDispersed = false;
+                            particle.initialDispersionTimer = 0;
+                            particle.dispersalDirection = Math.random() * Math.PI * 2;
+                            particle.dispersalForce = 0.4 + Math.random() * 0.3; // 穏やかな拡散力に調整
+                            // 接続フェード状態リセット
+                            particle.connectionFadeStartTime = null;
+                            particle.connectionFadeOpacity = 0.0;
                         } else if (journeyCurrentStage === 3) {
                             particle.autonomy = Math.max(0.8, particle.autonomy);
+                            
+                            // 創発的相互作用ステージ移行時の接続フェードイン初期化
+                            particle.connectionFadeStartTime = null;
+                            particle.connectionFadeOpacity = 0.0;
                             
                             // Stage 3移行時の分散促進
                             const canvas = document.getElementById('journey-canvas');
