@@ -702,6 +702,77 @@
                 font-size: 0.75em;
             }
         }
+        
+        /* ジャーニーマップセクション用スタイル */
+        .journey-map-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+        
+        
+        .toggle-icon {
+            font-size: 1em;
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+        
+        .journey-map-container {
+            padding: 0;
+            transition: max-height 0.5s ease;
+            overflow: hidden;
+        }
+        
+        .journey-iframe-wrapper {
+            padding: 20px;
+            background: white;
+        }
+        
+        .journey-map-description {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .journey-map-description h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .journey-map-description ul {
+            margin-left: 20px;
+        }
+        
+        .journey-map-description li {
+            margin-bottom: 8px;
+        }
+        
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .journey-iframe-wrapper {
+                padding: 10px;
+            }
+            
+            #journey-map-iframe {
+                height: 550px; /* モバイルでもグラフが見える高さ */
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .journey-iframe-wrapper {
+                padding: 8px;
+            }
+            
+            #journey-map-iframe {
+                height: 500px; /* 小画面でもできるだけグラフを表示 */
+            }
+        }
     </style>
 </head>
 <body>
@@ -1260,6 +1331,34 @@
                 <li><strong>セルフオーサーシップ段階：</strong>内なる基盤に基づく自己決定と行動の積み重ね</li>
             </ul>
         </div>
+        
+        <!-- 新規追加：ジャーニーマップセクション -->
+        <button class="toggle-button" onclick="toggleJourneyMap()">📊 ジャーニーマップ（例）を見る <span class="toggle-icon" id="journey-toggle-icon">▼</span></button>
+        
+        <div class="journey-map-section">
+            
+            <div class="journey-map-container" id="journey-map-container" style="display: none;">
+                <div class="journey-iframe-wrapper">
+                    <iframe id="journey-map-iframe"
+                            src="./journey-map-embed.html"
+                            width="100%"
+                            height="800px"
+                            frameborder="0"
+                            style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    </iframe>
+                </div>
+                
+                <div class="journey-map-description">
+                    <h4>ジャーニーマップについて</h4>
+                    <p>このツールでは、セルフオーサーシップ理論に基づいた学生の成長過程を視覚化できます。</p>
+                    <ul>
+                        <li><strong>ペルソナ比較：</strong>異なる学習パターンの比較分析</li>
+                        <li><strong>成長/停滞分析：</strong>成功・失敗パターンの可視化</li>
+                        <li><strong>分岐点特定：</strong>重要な転換点の詳細分析</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="section">
@@ -1434,6 +1533,14 @@
                     0x7fb3d3, 0xaed6f1, 0xf9e79f, 0xa3e4d7, 0xd7bde2
                 ];
                 this.colorTransitionSpeed = 0.05;
+                
+                // I-E Stage Particle Emergence System
+                this.isEmergingIE = false;           // I-E出現アニメーション中フラグ
+                this.emergenceStartTime = 0;         // 出現開始時刻
+                this.emergenceDelay = 500;           // 切り替え後の遅延（ms）
+                this.emergenceDuration = 2500;       // 全パーティクル出現期間（ms）
+                this.particleEmergenceInterval = 100; // パーティクル間出現間隔（ms）
+                this.emergingParticles = [];         // 出現中パーティクルのリスト
             }
             
             async init(containerId) {
@@ -2734,7 +2841,7 @@
                         color: 0x8bc34a, 
                         description: '内なる声を聴く',
                         behavior: 'listening',        // 聴く動き
-                        cohesion: 0.7,                // より強い凝集力（つかず離れず）
+                        cohesion: 0.1,                // 低い凝集力（自由な浮遊を維持）
                         speed: 0.5,                   // より静かに聴く
                         pattern: 'pulse'              // 脈動パターン
                     },
@@ -3267,9 +3374,58 @@
                     }, 100);
                 }
                 
+                // I-E ステージ専用: パーティクル出現アニメーション初期化
+                if (newStageId === 'I-E') {
+                    // まず全パーティクルを完全にコア中心に移動・非表示化
+                    this.particles.forEach((particle, index) => {
+                        if (particle.userData) {
+                            // コア中心に移動
+                            particle.position.set(0, 0, 0);
+                            // 完全に非表示
+                            particle.visible = false;
+                            particle.material.opacity = 0;
+                            particle.scale.setScalar(0.1);
+                            
+                            // I-Eステージの動作パターンを設定（重要！）
+                            particle.userData.behavior = newStageData.behavior;
+                            particle.userData.pattern = newStageData.pattern; // 'pulse'に設定
+                            particle.userData.cohesion = newStageData.cohesion;
+                            particle.userData.speed = newStageData.speed * (0.8 + Math.random() * 0.4);
+                            
+                            // 出現先の目標位置を計算（放射状配置）
+                            const radius = 1 + Math.random() * 4; // 1-5の範囲
+                            const theta = Math.random() * Math.PI * 2;
+                            const phi = Math.random() * Math.PI;
+                            
+                            const targetX = radius * Math.sin(phi) * Math.cos(theta);
+                            const targetY = radius * Math.sin(phi) * Math.sin(theta);
+                            const targetZ = radius * Math.cos(phi);
+                            
+                            // 出現アニメーション用データを設定
+                            particle.userData.emergenceStartPosition = new THREE.Vector3(0, 0, 0);
+                            particle.userData.emergenceTargetPosition = new THREE.Vector3(targetX, targetY, targetZ);
+                            
+                            // originalPositionを最終目標位置に設定（パルス動作の基準点）
+                            particle.userData.originalPosition = new THREE.Vector3(targetX, targetY, targetZ);
+                        }
+                    });
+                    
+                    // 出現アニメーション初期化
+                    this.initializeIEEmergence();
+                }
+                
                 // 既存パーティクルを新しい動作パターンに段階的に移行
                 this.particles.forEach((particle, index) => {
                     if (particle.userData) {
+                        // I-Eステージの場合は既に上で処理済み
+                        if (newStageId === 'I-E') {
+                            // I-Eステージでは色だけ更新（パターンは既に設定済み）
+                            if (!this.isColorfulStage(newStageId)) {
+                                particle.material.color.setHex(newStageData.color);
+                            }
+                            return;
+                        }
+                        
                         // 新しい動作パターンに更新
                         particle.userData.behavior = newStageData.behavior;
                         particle.userData.pattern = newStageData.pattern;
@@ -3336,6 +3492,36 @@
                     };
                     animateColor();
                 }, delay);
+            }
+            
+            // I-E ステージ専用: パーティクル出現アニメーション初期化
+            initializeIEEmergence() {
+                this.isEmergingIE = true;
+                this.emergenceStartTime = Date.now() + this.emergenceDelay;
+                this.emergingParticles = [];
+                
+                // 全パーティクルを出現待ちリストに追加（シャッフルして自然な順序に）
+                const particleIndices = this.particles.map((_, index) => index);
+                this.shuffleArray(particleIndices);
+                
+                particleIndices.forEach((index, order) => {
+                    this.emergingParticles.push({
+                        particleIndex: index,
+                        emergenceTime: this.emergenceStartTime + (order * this.particleEmergenceInterval),
+                        hasEmerged: false,
+                        emergenceProgress: 0
+                    });
+                });
+                
+                console.log(`I-E Emergence initialized: ${this.emergingParticles.length} particles scheduled`);
+            }
+            
+            // 配列をシャッフルするヘルパー関数
+            shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
             }
             
             adjustParticleCount(targetCount, color) {
@@ -3634,6 +3820,11 @@
                     // 段階的進化する次元リングのアニメーション
                     this.animateDimensionRingsEvolution(time);
                     
+                    // I-E ステージ: パーティクル出現アニメーション処理
+                    if (this.isEmergingIE) {
+                        this.updateIEEmergence();
+                    }
+                    
                     // Advanced particle animation based on stage behavior
                     this.particles.forEach((particle, index) => {
                         const userData = particle.userData;
@@ -3801,6 +3992,136 @@
                 });
             }
             
+            // I-E ステージ: パーティクル出現アニメーション更新
+            updateIEEmergence() {
+                const currentTime = Date.now();
+                let allEmerged = true;
+                
+                this.emergingParticles.forEach(emergenceData => {
+                    if (emergenceData.hasEmerged) return;
+                    
+                    // まだ出現時刻に達していない
+                    if (currentTime < emergenceData.emergenceTime) {
+                        allEmerged = false;
+                        return;
+                    }
+                    
+                    const particle = this.particles[emergenceData.particleIndex];
+                    if (!particle || !particle.userData) {
+                        emergenceData.hasEmerged = true;
+                        return;
+                    }
+                    
+                    // 出現アニメーション開始
+                    if (!emergenceData.hasEmerged) {
+                        const elapsedTime = currentTime - emergenceData.emergenceTime;
+                        const emergenceDuration = 1200; // 各パーティクルの出現期間を1.2秒に延長
+                        emergenceData.emergenceProgress = Math.min(elapsedTime / emergenceDuration, 1);
+                        
+                        // より自然なイージング関数（ease-out cubic）
+                        const easedProgress = 1 - Math.pow(1 - emergenceData.emergenceProgress, 2.5);
+                        
+                        // パーティクルを表示
+                        particle.visible = true;
+                        
+                        // 位置: より滑らかな放射状移動
+                        const startPos = particle.userData.emergenceStartPosition;
+                        const targetPos = particle.userData.emergenceTargetPosition;
+                        
+                        // 放射方向ベクトルを計算
+                        const direction = targetPos.clone().normalize();
+                        const maxDistance = targetPos.length();
+                        
+                        // 加速度的な移動（最初はゆっくり、後で加速）
+                        const currentDistance = maxDistance * easedProgress;
+                        particle.position.copy(direction.multiplyScalar(currentDistance));
+                        
+                        // 透明度: より滑らかなフェードイン
+                        const opacityProgress = Math.min(emergenceData.emergenceProgress * 1.5, 1);
+                        particle.material.opacity = 0.9 * opacityProgress;
+                        
+                        // スケール: より滑らかなサイズ変化
+                        const scaleProgress = Math.min(emergenceData.emergenceProgress * 1.2, 1);
+                        const scale = 0.2 + (0.8 * scaleProgress);
+                        particle.scale.setScalar(scale);
+                        
+                        // 軽微な回転効果（生命感を表現）
+                        particle.rotation.z = emergenceData.emergenceProgress * Math.PI * 0.5;
+                        
+                        // 出現完了チェック
+                        if (emergenceData.emergenceProgress >= 1) {
+                            emergenceData.hasEmerged = true;
+                            
+                            // パルス動作の初期状態に合わせて位置を設定
+                            const basePos = particle.userData.originalPosition;
+                            const distance = basePos.length();
+                            
+                            // 現在の位置からパルス値を逆算して時間オフセットを設定
+                            const currentDistance = particle.position.length();
+                            const currentPulse = currentDistance / distance;
+                            
+                            // 現在のパルス値に対応する時間オフセットを計算
+                            let targetPulse = Math.max(0.85, Math.min(1.0, currentPulse)); // 0.85-1.0の範囲に制限
+                            let normalizedPulse = (targetPulse - 0.925) / 0.075; // -1から1の範囲に正規化
+                            normalizedPulse = Math.max(-1, Math.min(1, normalizedPulse)); // 範囲を確実に制限
+                            
+                            const currentPhase = Math.asin(normalizedPulse);
+                            particle.userData.pulseTimeOffset = currentPhase - (Date.now() * 0.001) * 1.2;
+                            
+                            // パルス動作と同じ計算式を使用して位置を微調整
+                            const initialPulse = Math.sin((Date.now() * 0.001) * 1.2 + particle.userData.pulseTimeOffset) * 0.075 + 0.925;
+                            const direction = basePos.clone().normalize();
+                            const pulsedDistance = distance * initialPulse;
+                            
+                            particle.position.copy(direction);
+                            particle.position.multiplyScalar(pulsedDistance);
+                            
+                            // 通常の動作に移行するため、初期設定をリセット
+                            particle.material.opacity = 0.9;
+                            particle.scale.setScalar(1);
+                            particle.rotation.z = 0;
+                        } else {
+                            allEmerged = false;
+                        }
+                    }
+                });
+                
+                // 全パーティクルの出現完了
+                if (allEmerged) {
+                    this.isEmergingIE = false;
+                    console.log('I-E Emergence animation completed - transitioning to pulse behavior');
+                    
+                    // 全てのパーティクルのパターンを確実にpulseに設定
+                    this.particles.children.forEach(particle => {
+                        particle.userData.pattern = 'pulse';
+                        particle.userData.cohesion = 0.2;
+                        particle.userData.behavior = 'contemplative';
+                    });
+                    
+                    console.log('I-E particles reset to pulse pattern - total particles:', this.particles.children.length);
+                    
+                    // 通常のpulseパターンに移行するため、出現アニメーションの一時的効果のみリセット
+                    this.particles.forEach(particle => {
+                        if (particle.userData) {
+                            // originalPositionは既に適切に設定済みなので更新しない
+                            
+                            // 出現アニメーションの一時的な効果をリセット
+                            particle.material.opacity = 0.9;
+                            particle.scale.setScalar(1);
+                            particle.rotation.z = 0;
+                            particle.visible = true;
+                            
+                            // I-Eステージの設定を確実に適用
+                            const stageData = this.getStageData('I-E');
+                            particle.material.color.setHex(stageData.color);
+                            particle.userData.pattern = 'pulse'; // 明示的にpulseパターンに設定
+                            particle.userData.behavior = 'listening';
+                            particle.userData.cohesion = 0.1; // 低い凝集力
+                        }
+                    });
+                }
+            }
+            
             updateParticleBehavior(particle, index, time) {
                 try {
                     const userData = particle.userData;
@@ -3929,11 +4250,26 @@
             animateConvergentBehavior(particle, index, time) {
                 // E-I: 収束 - 内なる声の構築
                 const userData = particle.userData;
-                const centerPull = userData.cohesion * 0.02;
+                
+                // I-Eステージのパーティクルがこのメソッドに来ていないか確認
+                if (this.currentStage === 'I-E' && index === 0 && Math.random() < 0.05) {
+                    console.warn('I-E stage particle in convergent behavior - pattern:', userData.pattern, 'should be pulse');
+                }
+                
+                const centerPull = userData.cohesion * 0.03; // 少し強化
                 const direction = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), particle.position).normalize();
                 
+                // より強い中心への吸引力
                 particle.position.add(direction.multiplyScalar(centerPull));
-                particle.position.y += Math.sin(time * 2 + index) * 0.005;
+                
+                // 垂直方向の微細な動きを抑制（より収束に集中）
+                particle.position.y += Math.sin(time * 2 + index) * 0.003;
+                
+                // コア近くでは透明度を下げる（吸い込まれる感覚）
+                const distanceToCore = particle.position.length();
+                if (distanceToCore < 0.5) {
+                    particle.material.opacity = Math.max(0.3, 0.9 * (distanceToCore / 0.5));
+                }
             }
             
             animateDynamicEmergenceBehavior(particle, index, time) {
@@ -4047,27 +4383,51 @@
             
             animatePulseBehavior(particle, index, time) {
                 // I-E: 脈動 - 内なる声を聴く（つかず離れずの状態）
+                
+                // 出現アニメーション中は通常のpulse動作をスキップ
+                if (this.isEmergingIE) {
+                    return;
+                }
+                
                 const basePos = particle.userData.originalPosition;
+                if (!basePos) return; // originalPositionが設定されていない場合はスキップ
+                
+                // デバッグ：パターンが正しく設定されているか確認（最初の数回のみ）
+                if (index === 0 && Math.random() < 0.01) {
+                    console.log('I-E Pulse behavior - pattern:', particle.userData.pattern, 'cohesion:', particle.userData.cohesion);
+                }
+                
                 const distance = basePos.length();
                 
-                // より短い距離での脈動（0.7-1.0の範囲）
-                const pulse = Math.sin(time * 1.2 + index * 0.15) * 0.15 + 0.85;
+                // 時間オフセットを使用した滑らかなパルス（設定されていない場合はindex基準）
+                const timeOffset = particle.userData.pulseTimeOffset || (index * 0.15);
+                
+                // より短い距離での脈動（0.85-1.0の範囲に調整）
+                const pulse = Math.sin(time * 1.2 + timeOffset) * 0.075 + 0.925;
                 
                 // 個別の思案プロセスを表現する微細な揺らぎ
-                const contemplation = Math.sin(time * 2.3 + index * 0.3) * 0.05;
+                const contemplation = Math.sin(time * 2.3 + index * 0.3) * 0.03;
                 const finalPulse = pulse + contemplation;
                 
-                // 距離制限: コアから離れすぎないように
-                const maxDistance = Math.min(distance * 1.2, 2.0);
-                const minDistance = Math.max(distance * 0.6, 0.5);
-                const constrainedDistance = minDistance + (maxDistance - minDistance) * finalPulse;
+                // 基準位置からの脈動（コアに向かわず、元の位置周辺で脈動）
+                const direction = basePos.clone().normalize();
+                const pulsedDistance = distance * finalPulse;
                 
-                // 位置更新
-                particle.position.copy(basePos.normalize());
-                particle.position.multiplyScalar(constrainedDistance);
+                // 位置更新: 元の方向を維持しながら距離だけを脈動
+                particle.position.copy(direction);
+                particle.position.multiplyScalar(pulsedDistance);
+                
+                // 軽微な円軌道運動を追加（内なる声を「聴く」動きを表現）
+                const orbitAngle = time * 0.3 + index * 0.5;
+                const orbitRadius = 0.1;
+                const orbitX = Math.cos(orbitAngle) * orbitRadius;
+                const orbitZ = Math.sin(orbitAngle) * orbitRadius;
+                
+                particle.position.x += orbitX;
+                particle.position.z += orbitZ;
                 
                 // 透明度も微細に変動（思考の深さを表現）
-                particle.material.opacity = 0.6 + finalPulse * 0.3;
+                particle.material.opacity = 0.7 + finalPulse * 0.2;
             }
             
             animateGrowthBehavior(particle, index, time) {
@@ -5423,6 +5783,74 @@
                 });
             }, 1000);
         });
+        
+        // ジャーニーマップ開閉機能
+        function toggleJourneyMap() {
+            const container = document.getElementById('journey-map-container');
+            const icon = document.getElementById('journey-toggle-icon');
+            
+            if (container.style.display === 'none') {
+                // 開く
+                container.style.display = 'block';
+                icon.classList.add('rotated');
+                icon.textContent = '▲';
+                
+                // iframe のサイズ調整
+                adjustIframeHeight();
+            } else {
+                // 閉じる
+                container.style.display = 'none';
+                icon.classList.remove('rotated');
+                icon.textContent = '▼';
+            }
+        }
+        
+        // iframe の動的高さ調整（UX最適化版）
+        let lastIframeHeight = 800; // 初期値をグラフが見える高さに
+        let heightAdjustmentSetup = false;
+        
+        function adjustIframeHeight() {
+            if (heightAdjustmentSetup) return; // 重複リスナー防止
+            heightAdjustmentSetup = true;
+            
+            const iframe = document.getElementById('journey-map-iframe');
+            
+            // PostMessage でiframe内の高さを受信
+            window.addEventListener('message', function(event) {
+                if (event.data.type === 'IFRAME_HEIGHT_CHANGE' && iframe) {
+                    let newHeight = event.data.height + 20; // パディングを最小限に
+                    
+                    // レスポンシブ対応：画面サイズに応じた制限
+                    const viewportHeight = window.innerHeight;
+                    const maxAllowedHeight = Math.min(viewportHeight * 0.85, 1600);
+                    
+                    // 最小高さを800px、最大高さを制限
+                    newHeight = Math.max(800, Math.min(newHeight, maxAllowedHeight));
+                    
+                    // 高さの変化が最小限の場合は調整しない
+                    if (Math.abs(newHeight - lastIframeHeight) < 5) {
+                        return;
+                    }
+                    
+                    lastIframeHeight = newHeight;
+                    
+                    // スムーズなトランジション
+                    iframe.style.transition = 'height 0.3s ease-out';
+                    iframe.style.height = newHeight + 'px';
+                    
+                    console.log('iframe高さ最適化:', {
+                        received: event.data.height,
+                        applied: newHeight,
+                        viewport: viewportHeight
+                    });
+                    
+                    // トランジション終了後にtransitionを削除
+                    setTimeout(() => {
+                        iframe.style.transition = '';
+                    }, 300);
+                }
+            });
+        }
     </script>
 </body>
 </html>
