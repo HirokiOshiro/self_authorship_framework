@@ -554,6 +554,27 @@
             box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
         }
         
+        .tool-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 500;
+            text-align: center;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        
+        .tool-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            text-decoration: none;
+            color: white;
+        }
+        
         .view-controls {
             display: flex;
             gap: 10px;
@@ -881,7 +902,7 @@
                 
                 <!-- Canvas 2Dビジュアライゼーション統合エリア -->
                 <div class="canvas-2d-integration">
-                    <h4>🗺️ セルフオーサーシップの成長イメージ</h4>
+                    <h4>🗺️ 成長の旅のビジュアライゼーション</h4>
                     <p>以下のインタラクティブなアニメーションは、セルフオーサーシップの成長イメージの表現です。マウスで操作してみてください。<br>🎨：これはセルフオーサーシップの成長を集団・集合的な視点から比喩的に表現した例です。</p>
 
                     <div id="journey-canvas-container" class="journey-canvas-container">
@@ -1365,6 +1386,37 @@
         <h2>📚 参考情報</h2>
         <p>上記の情報は、Baxter Magoldaによるセルフオーサーシップ理論、および河井亨（2022）「<a href="https://ritsumei.repo.nii.ac.jp/records/16164" target="_blank">大学生におけるセルフ・オーサーシップの成長理論 : 成長理論のなかの位置づけおよび成長経路と影響要因の析出</a>」を参照しながら作成しています。</p>
         <p>より詳細な理論的背景や実践事例については、原著論文をご参照ください。</p>
+    </div>
+
+    <div class="section">
+        <h2>🤖 付録：セルフオーサーシップの成長支援のための生成AI活用ツール</h2>
+        <p>以下のツールを活用して、セルフオーサーシップの各段階における成長を支援することができます。</p>
+        
+        <div class="dimension-grid">
+            <div class="dimension-card">
+                <h3>📋 ペルソナ属性選択ツール</h3>
+                <p>セルフオーサーシップの成長段階に応じたペルソナ設定を支援し、個人の学習・成長プロセスをより効果的に進められるよう設計されたツールです。</p>
+                <a href="https://hirokioshiro.github.io/persona_selection_tool/" target="_blank" class="tool-link">
+                    ツールを開く →
+                </a>
+            </div>
+            
+            <div class="dimension-card">
+                <h3>🎯 概念可視化プロンプト生成ツール</h3>
+                <p>複雑な概念や理論を視覚的に理解しやすい形で表現するためのプロンプトを自動生成し、セルフオーサーシップの理解を深めることができます。</p>
+                <a href="https://hirokioshiro.github.io/concept_visualization_prompt_generator/" target="_blank" class="tool-link">
+                    ツールを開く →
+                </a>
+            </div>
+            
+            <div class="dimension-card">
+                <h3>🃏 パターン・カード生成ツール</h3>
+                <p>セルフオーサーシップの成長を促すような問いをパターンカードとして作成し、学習者が各自の状況に応じて自分自身へ問いかけを行う機会を提供できます。</p>
+                <a href="https://hirokioshiro.github.io/pattern_card_generator/" target="_blank" class="tool-link">
+                    ツールを開く →
+                </a>
+            </div>
+        </div>
     </div>
 
     <script>
