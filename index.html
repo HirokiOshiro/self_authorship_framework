@@ -192,7 +192,7 @@
             color: #2196f3;
         }
         .toggle-button {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -202,7 +202,10 @@
             transition: background 0.3s;
         }
         .toggle-button:hover {
-            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            text-decoration: none;
+            color: white;
         }
         .collapsible {
             display: none;
@@ -1043,6 +1046,10 @@
                             <button id="reset-view-btn" class="floating-view-control">
                                 <span>↺</span>
                                 <span class="tooltip">視点リセット</span>
+                            </button>
+                            <button id="reinit-3d-btn" class="floating-view-control" style="right: 60px;">
+                                <span>⟲</span>
+                                <span class="tooltip">3D環境初期化</span>
                             </button>
                         </div>
                         <div class="sa-3d-loading" id="refined-3d-loading">
@@ -4321,6 +4328,13 @@
                     });
                 }
                 
+                const reinitBtn = document.getElementById('reinit-3d-btn');
+                if (reinitBtn) {
+                    reinitBtn.addEventListener('click', () => {
+                        this.reinitialize3D();
+                    });
+                }
+                
                 // Zoom controls via mouse wheel
                 if (this.renderer && this.renderer.domElement) {
                     this.renderer.domElement.addEventListener('wheel', (e) => {
@@ -5133,6 +5147,59 @@
             resetView() {
                 this.camera.position.set(0, 0, this.defaultCameraZ);
                 this.camera.lookAt(0, 0, 0);
+            }
+            
+            reinitialize3D() {
+                // 軽い初期化：現在のオブジェクトをリセットして初期状態に戻す
+                
+                // 全てのパーティクルをクリア
+                if (this.particles) {
+                    this.particles.forEach(particle => {
+                        if (particle && this.scene) {
+                            this.scene.remove(particle);
+                        }
+                    });
+                    this.particles = [];
+                }
+                
+                // 接続をクリア
+                this.clearConnections();
+                
+                // 光のベールを隠す
+                this.hideAllLightVeils();
+                
+                // カメラをリセット
+                this.resetView();
+                
+                // 初期状態（Ea）に戻す
+                this.switchToStage('Ea');
+            }
+            
+            cleanup() {
+                // アニメーションを停止
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+                
+                // シーンの全てのオブジェクトを削除
+                if (this.scene) {
+                    while(this.scene.children.length > 0) {
+                        const child = this.scene.children[0];
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (child.material.map) child.material.map.dispose();
+                            child.material.dispose();
+                        }
+                        this.scene.remove(child);
+                    }
+                }
+                
+                // レンダラーを削除
+                if (this.renderer) {
+                    this.renderer.dispose();
+                    this.renderer = null;
+                }
             }
             
             handleZoom(deltaY) {
@@ -6028,22 +6095,31 @@
                         if (!refinedVisualization) {
                             console.log('Creating new RefinedSelfAuthorshipVisualization instance');
                             refinedVisualization = new RefinedSelfAuthorshipVisualization();
+                            console.log('Initializing 3D visualization');
+                            refinedVisualization.init('refined-3d-container');
+                        } else {
+                            // セクションが再度開かれた時は3D環境を初期化
+                            console.log('Re-initializing 3D environment');
+                            refinedVisualization.reinitialize3D();
                         }
-                        console.log('Initializing 3D visualization');
-                        refinedVisualization.init('refined-3d-container');
                     } catch (error) {
                         console.error('3D初期化エラー:', error);
                         alert('3D初期化エラー: ' + error.message);
                     }
                 } else {
-                    // Section closed - cleanup 3D
-                    console.log('精緻化セクションが閉じられました - 3Dクリーンアップ開始');
+                    // Section closed - 軽いクリーンアップのみ（レンダラーは保持）
+                    console.log('精緻化セクションが閉じられました - 軽いクリーンアップ開始');
                     try {
                         if (refinedVisualization) {
-                            refinedVisualization.cleanup();
+                            // アニメーションのみ停止、レンダラーは保持
+                            if (refinedVisualization.animationId) {
+                                cancelAnimationFrame(refinedVisualization.animationId);
+                                refinedVisualization.animationId = null;
+                            }
+                            console.log('アニメーション停止完了（レンダラーは保持）');
                         }
                     } catch (error) {
-                        console.error('3Dクリーンアップエラー:', error);
+                        console.error('軽いクリーンアップエラー:', error);
                     }
                 }
             }
