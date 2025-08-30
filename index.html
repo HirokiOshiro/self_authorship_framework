@@ -1386,12 +1386,12 @@
 
     <div class="section">
         <h2>📚 参考情報</h2>
-        <p>上記の情報は、Baxter-Magoldaによるセルフ・オーサーシップ理論、および河井亨（2022）「<a href="https://ritsumei.repo.nii.ac.jp/records/16164" target="_blank">大学生におけるセルフ・オーサーシップの成長理論 : 成長理論のなかの位置づけおよび成長経路と影響要因の析出</a>」を参照しながら作成しています。</p>
+        <p>上記の情報は、Baxter Magoldaによるセルフ・オーサーシップ理論、および河井亨（2022）「<a href="https://ritsumei.repo.nii.ac.jp/records/16164" target="_blank">大学生におけるセルフ・オーサーシップの成長理論 : 成長理論のなかの位置づけおよび成長経路と影響要因の析出</a>」を参照しながら作成しています。</p>
         <p>より詳細な理論的背景や実践事例については、原著論文をご参照ください。</p>
     </div>
 
     <div class="section">
-        <h2>🤖 付録：セルフ・オーサーシップの成長支援のための生成AI活用ツール</h2>
+        <h2>🤖 付録：セルフ・の成長支援のための生成AI活用ツール</h2>
         <p>以下のツールを活用して、セルフ・オーサーシップの各段階における成長を支援することができます。</p>
         
         <div class="dimension-grid">
@@ -1423,6 +1423,1100 @@
 
     <script>
         // Self-Authorship 3D Integration Module
+        
+        // 次元1: 対自関係次元 - 流れ星イメージ光線システム
+        class LightningDimensionSystem {
+            constructor(particles, scene) {
+                this.particles = particles;
+                this.scene = scene;
+                this.activeShootingStars = []; // アクティブな流れ星
+                this.trailSegments = []; // 残像セグメント
+                this.lastUpdate = 0;
+                this.maxConcurrentStars = 2; // 同時流れ星数
+                this.tailLength = 0.8; // 流れ星の尻尾の長さ
+                this.trailFadeTime = 1500; // 残像のフェード時間（ms）
+            }
+            
+            // 直線パス生成（ギザギザなし）
+            createStraightPath(startParticle, endParticle) {
+                const start = startParticle.position.clone();
+                const end = endParticle.position.clone();
+                return [start, end];
+            }
+            
+            // 流れ星クラス（イーズイン/アウトと残像効果付き）
+            createShootingStar(waypoints, stageIntensity) {
+                const star = {
+                    waypoints: waypoints,
+                    currentSegment: 0, // 現在のセグメント（A→B, B→C, etc.）
+                    progress: 0, // 現在セグメント内の進行度 (0-1)
+                    globalProgress: 0, // 全体の進行度 (0-1)
+                    baseSpeed: stageIntensity.speed, // 基本移動速度
+                    currentSpeed: 0, // 現在の速度（イーズ用）
+                    tailLength: this.tailLength, // 流れ星の尻尾の長さ
+                    color: stageIntensity.colors[Math.floor(Math.random() * stageIntensity.colors.length)],
+                    opacity: stageIntensity.opacity,
+                    creationTime: Date.now(),
+                    duration: stageIntensity.duration,
+                    mainLine: null, // メインの流れ星ライン
+                    totalDistance: 0, // 総距離
+                    easingType: stageIntensity.easingType || 'easeInOut' // イージングタイプ
+                };
+                
+                // 総距離を計算
+                star.totalDistance = this.getTotalRouteLength(waypoints);
+                
+                return star;
+            }
+            
+            // 経由点を選択（TSP最適化版）
+            selectWaypoints(availableParticles, count) {
+                const waypoints = [];
+                const usedIndices = new Set();
+                
+                // ランダムに経由点を選択
+                while (waypoints.length < count && waypoints.length < availableParticles.length) {
+                    const randomIndex = Math.floor(Math.random() * availableParticles.length);
+                    if (!usedIndices.has(randomIndex)) {
+                        waypoints.push(availableParticles[randomIndex]);
+                        usedIndices.add(randomIndex);
+                    }
+                }
+                
+                // 距離最適化
+                if (waypoints.length > 1) {
+                    const optimized = [waypoints[0]];
+                    const remaining = waypoints.slice(1);
+                    
+                    while (remaining.length > 0) {
+                        const current = optimized[optimized.length - 1];
+                        let nearestIndex = 0;
+                        let nearestDistance = current.position.distanceTo(remaining[0].position);
+                        
+                        for (let i = 1; i < remaining.length; i++) {
+                            const distance = current.position.distanceTo(remaining[i].position);
+                            if (distance < nearestDistance) {
+                                nearestDistance = distance;
+                                nearestIndex = i;
+                            }
+                        }
+                        
+                        optimized.push(remaining[nearestIndex]);
+                        remaining.splice(nearestIndex, 1);
+                    }
+                    
+                    return optimized;
+                }
+                
+                return waypoints;
+            }
+            
+            createShootingStars(stage) {
+                const stageIntensity = this.getLightningIntensity(stage);
+                const availableParticles = this.particles.filter(p => p.visible);
+                
+                // デバッグ出力
+                console.log(`[ShootingStar] Stage: ${stage}, Particles: ${availableParticles.length}, Frequency: ${stageIntensity.frequency}ms`);
+                
+                if (availableParticles.length < 2) {
+                    console.log('[ShootingStar] Not enough visible particles for shooting stars');
+                    return;
+                }
+                
+                // 新しい流れ星を生成
+                const starCount = Math.min(stageIntensity.maxCount, this.maxConcurrentStars);
+                
+                for (let i = 0; i < starCount; i++) {
+                    const waypoints = this.selectWaypoints(availableParticles, stageIntensity.waypointCount);
+                    if (waypoints.length >= 2) {
+                        const star = this.createShootingStar(waypoints, stageIntensity);
+                        this.activeShootingStars.push(star);
+                    }
+                }
+            }
+            
+            getLightningIntensity(stageNumber) {
+                if (stageNumber <= 3) {
+                    // EA段階: 穏やかな流れ星（パステル調の単色）
+                    return {
+                        maxCount: 1,
+                        colors: [0x87ceeb, 0x98fb98, 0xffd1dc], // スカイブルー、ペールグリーン、ピンク
+                        opacity: 0.8,
+                        duration: 3000, // 流れ星の寿命
+                        frequency: 2000, // 生成頻度
+                        waypointCount: 2, // 2点間移動（シンプルな流れ星）
+                        speed: 1.0, // 基本移動速度
+                        easingType: 'easeInOut' // スムーズなイージング
+                    };
+                } else if (stageNumber <= 7) {
+                    // 岐路段階: 活発な流れ星（明るい多色）
+                    return {
+                        maxCount: 2,
+                        colors: [0x87ceeb, 0x98fb98, 0xffd700, 0xff69b4, 0x40e0d0], // スカイブルー、ライトグリーン、ゴールド、ホットピンク、ターコイズ
+                        opacity: 0.85,
+                        duration: 2500,
+                        frequency: 1200,
+                        waypointCount: 3, // 3点経由
+                        speed: 1.3, // やや高速
+                        easingType: 'easeInOut'
+                    };
+                } else {
+                    // IA段階: 統合的な流れ星（虹色スペクトラム）
+                    return {
+                        maxCount: 2,
+                        colors: [0xff69b4, 0x40e0d0, 0x98fb98, 0xffd700, 0xff7f50, 0xda70d6, 0x87ceeb], // 虹色パレット
+                        opacity: 0.9,
+                        duration: 2000,
+                        frequency: 800,
+                        waypointCount: 3, // 3点経由
+                        speed: 1.5, // 高速
+                        easingType: 'easeInOut'
+                    };
+                }
+            }
+            
+            // 流れ星の移動アニメーション更新
+            updateShootingStars(deltaTime) {
+                this.activeShootingStars = this.activeShootingStars.filter(star => {
+                    const age = Date.now() - star.creationTime;
+                    const normalizedAge = age / star.duration;
+                    
+                    // イージング関数を適用
+                    const easedProgress = this.applyEasing(normalizedAge, star.easingType);
+                    star.globalProgress = Math.min(easedProgress, 1.0);
+                    
+                    // 現在の速度をイージングに基づいて計算
+                    star.currentSpeed = this.calculateSpeedFromEasing(normalizedAge, star.easingType, star.baseSpeed);
+                    
+                    // セグメントとローカル進行度の更新
+                    this.updateSegmentProgress(star);
+                    
+                    // 寿命チェック
+                    if (normalizedAge >= 1.0) {
+                        // 残像を作成してから流れ星を除去
+                        this.createTrailSegment(star);
+                        this.cleanupShootingStar(star);
+                        return false;
+                    }
+                    
+                    // 流れ星を描画
+                    this.renderShootingStar(star);
+                    
+                    return true;
+                });
+                
+                // 残像セグメントの更新
+                this.updateTrailSegments();
+            }
+            
+            // 流れ星の光線描画（イージングと残像効果付き）
+            renderShootingStar(star) {
+                // 既存のラインを削除
+                if (star.mainLine) {
+                    this.scene.remove(star.mainLine);
+                    star.mainLine.geometry.dispose();
+                    star.mainLine.material.dispose();
+                    star.mainLine = null;
+                }
+                
+                const currentWaypoint = star.waypoints[star.currentSegment];
+                const nextWaypoint = star.waypoints[star.currentSegment + 1];
+                
+                if (!currentWaypoint || !nextWaypoint) return;
+                
+                // 現在位置の計算
+                const currentPos = currentWaypoint.position.clone().lerp(
+                    nextWaypoint.position, 
+                    star.progress
+                );
+                
+                // 流れ星の尻尾位置の計算（グローバル進行度ベース）
+                const tailGlobalProgress = Math.max(0, star.globalProgress - (star.tailLength / star.totalDistance));
+                const tailPos = this.getPositionAtGlobalProgress(star.waypoints, tailGlobalProgress);
+                
+                if (!tailPos) return;
+                
+                // 流れ星のグラデーション材質を作成
+                const points = [tailPos, currentPos];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                
+                // アルファ属性を追加（尻尾=0.0, 先頭=1.0）
+                const alphas = new Float32Array([0.0, 1.0]);
+                geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+                
+                // シェーダーマテリアルでグラデーション効果
+                const material = this.createShootingStarMaterial(star);
+                
+                star.mainLine = new THREE.Line(geometry, material);
+                this.scene.add(star.mainLine);
+            }
+            
+            // 進行度から座標を取得
+            getPositionAtProgress(waypoints, totalProgress) {
+                if (totalProgress <= 0) return waypoints[0].position.clone();
+                
+                const segmentIndex = Math.floor(totalProgress);
+                const segmentProgress = totalProgress - segmentIndex;
+                
+                if (segmentIndex >= waypoints.length - 1) {
+                    return waypoints[waypoints.length - 1].position.clone();
+                }
+                
+                return waypoints[segmentIndex].position.clone().lerp(
+                    waypoints[segmentIndex + 1].position,
+                    segmentProgress
+                );
+            }
+            
+            // ルートの総長を計算
+            getTotalRouteLength(waypoints) {
+                let totalLength = 0;
+                for (let i = 0; i < waypoints.length - 1; i++) {
+                    totalLength += waypoints[i].position.distanceTo(waypoints[i + 1].position);
+                }
+                return totalLength;
+            }
+            
+            // 流れ星用グラデーションマテリアル作成
+            createShootingStarMaterial(star) {
+                const vertexShader = `
+                    attribute float alpha;
+                    varying float vAlpha;
+                    varying vec3 vPosition;
+                    
+                    void main() {
+                        vAlpha = alpha;
+                        vPosition = position;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+                
+                const fragmentShader = `
+                    uniform vec3 color;
+                    uniform float opacity;
+                    uniform float time;
+                    varying float vAlpha;
+                    varying vec3 vPosition;
+                    
+                    void main() {
+                        // 先頭から尻尾へのグラデーション
+                        float gradient = 1.0 - vAlpha; // 0=尻尾, 1=先頭
+                        
+                        // 輝き効果
+                        float glow = pow(gradient, 0.5) * (0.8 + 0.2 * sin(time * 0.01));
+                        
+                        gl_FragColor = vec4(color, opacity * glow);
+                    }
+                `;
+                
+                const material = new THREE.ShaderMaterial({
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader,
+                    uniforms: {
+                        color: { value: new THREE.Color(star.color) },
+                        opacity: { value: star.opacity },
+                        time: { value: Date.now() }
+                    },
+                    transparent: true,
+                    blending: THREE.AdditiveBlending // 美しい発光効果
+                });
+                
+                return material;
+            }
+            
+            // イージング関数
+            applyEasing(t, type) {
+                switch (type) {
+                    case 'easeIn':
+                        return t * t * t; // スロースタート
+                    case 'easeOut':
+                        return 1 - Math.pow(1 - t, 3); // スローエンド
+                    case 'easeInOut':
+                    default:
+                        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // 流れ星らしい動き
+                }
+            }
+            
+            // イージングから現在の速度を計算
+            calculateSpeedFromEasing(t, type, baseSpeed) {
+                const dt = 0.001; // 微小変化
+                const current = this.applyEasing(t, type);
+                const next = this.applyEasing(Math.min(t + dt, 1.0), type);
+                return (next - current) / dt * baseSpeed;
+            }
+            
+            // グローバル進行度からセグメント進行度を更新
+            updateSegmentProgress(star) {
+                const totalSegments = star.waypoints.length - 1;
+                const globalSegmentProgress = star.globalProgress * totalSegments;
+                
+                star.currentSegment = Math.min(Math.floor(globalSegmentProgress), totalSegments - 1);
+                star.progress = globalSegmentProgress - star.currentSegment;
+                
+                // 最終セグメントでの調整
+                if (star.currentSegment >= totalSegments - 1) {
+                    star.currentSegment = totalSegments - 1;
+                    star.progress = Math.min(star.progress, 1.0);
+                }
+            }
+            
+            // グローバル進行度から位置を取得
+            getPositionAtGlobalProgress(waypoints, globalProgress) {
+                if (globalProgress <= 0) return waypoints[0].position.clone();
+                if (globalProgress >= 1) return waypoints[waypoints.length - 1].position.clone();
+                
+                const totalSegments = waypoints.length - 1;
+                const segmentProgress = globalProgress * totalSegments;
+                const segmentIndex = Math.floor(segmentProgress);
+                const localProgress = segmentProgress - segmentIndex;
+                
+                if (segmentIndex >= totalSegments - 1) {
+                    return waypoints[waypoints.length - 1].position.clone();
+                }
+                
+                return waypoints[segmentIndex].position.clone().lerp(
+                    waypoints[segmentIndex + 1].position,
+                    localProgress
+                );
+            }
+            
+            // 残像セグメントを作成
+            createTrailSegment(star) {
+                if (!star.mainLine) return;
+                
+                const trailSegment = {
+                    line: star.mainLine.clone(),
+                    creationTime: Date.now(),
+                    originalOpacity: star.opacity,
+                    color: star.color
+                };
+                
+                // クローンしたラインのマテリアルをコピー
+                trailSegment.line.material = star.mainLine.material.clone();
+                this.scene.add(trailSegment.line);
+                
+                this.trailSegments.push(trailSegment);
+                
+                // 元のラインはシーンから除去しない（クローンしたので別物）
+                star.mainLine = null;
+            }
+            
+            // 残像セグメントの更新（フェードアウト）
+            updateTrailSegments() {
+                const currentTime = Date.now();
+                
+                this.trailSegments = this.trailSegments.filter(segment => {
+                    const age = currentTime - segment.creationTime;
+                    const fadeProgress = age / this.trailFadeTime;
+                    
+                    if (fadeProgress >= 1.0) {
+                        // フェード完了、除去
+                        this.scene.remove(segment.line);
+                        segment.line.geometry.dispose();
+                        segment.line.material.dispose();
+                        return false;
+                    }
+                    
+                    // フェードアウト効果
+                    const fadedOpacity = segment.originalOpacity * (1 - fadeProgress);
+                    if (segment.line.material.uniforms && segment.line.material.uniforms.opacity) {
+                        segment.line.material.uniforms.opacity.value = fadedOpacity;
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            // 流れ星のクリーンアップ
+            cleanupShootingStar(star) {
+                if (star.mainLine) {
+                    // メインラインは残像として使用するのでここでは削除しない
+                    star.mainLine = null;
+                }
+            }
+            
+            // 全体のクリーンアップ
+            clearActiveLightning() {
+                this.activeShootingStars.forEach(star => this.cleanupShootingStar(star));
+                this.activeShootingStars = [];
+                
+                // 残像セグメントもクリーンアップ
+                this.trailSegments.forEach(segment => {
+                    this.scene.remove(segment.line);
+                    segment.line.geometry.dispose();
+                    segment.line.material.dispose();
+                });
+                this.trailSegments = [];
+            }
+            
+            update(stageNumber) {
+                const now = Date.now();
+                const intensity = this.getLightningIntensity(stageNumber);
+                
+                // 新しい流れ星の生成タイミング制御
+                if (now - this.lastUpdate > intensity.frequency) {
+                    this.createShootingStars(stageNumber);
+                    this.lastUpdate = now;
+                }
+                
+                // 流れ星のアニメーション更新
+                const deltaTime = 0.016; // 約60FPS想定
+                this.updateShootingStars(deltaTime);
+            }
+            
+            cleanup() {
+                this.clearActiveLightning();
+            }
+        }
+        
+        // 次元2: 認識論的次元 - レーダー探知システム
+        class RadarDimensionSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.radarBeam = null;
+                this.detectionRings = [];
+                this.rotationSpeed = 0.005; // より穏やかな基本速度に変更
+                this.sweepAngle = Math.PI / 3; // 60度の扇形
+                this.maxRange = 4.0;
+                this.currentAngle = 0;
+                this.axisVariation = 0; // 回転軸の変化用
+            }
+            
+            createRadarBeam(stageNumber) {
+                this.cleanup();
+                const intensity = this.getRadarIntensity(stageNumber);
+                
+                // メインレーダービーム（扇形）- グラデーション用の複数セグメントで構成
+                const beamGeometry = new THREE.ConeGeometry(
+                    intensity.range, 
+                    0.05, 
+                    32, // セグメント数を増やしてグラデーション効果向上
+                    1, 
+                    true, 
+                    0, 
+                    this.sweepAngle
+                );
+                
+                // カラフルグラデーションマテリアル作成
+                const gradientMaterial = this.createGradientMaterial(intensity.colors, intensity.opacity);
+                
+                this.radarBeam = new THREE.Mesh(beamGeometry, gradientMaterial);
+                this.radarBeam.rotation.x = -Math.PI / 2; // 水平に配置
+                this.radarBeam.position.y = 0.05; // わずかに上に配置
+                
+                // 探知リング効果
+                this.createDetectionRings(intensity);
+                
+                this.scene.add(this.radarBeam);
+                this.rotationSpeed = intensity.rotationSpeed;
+            }
+            
+            createGradientMaterial(colors, opacity) {
+                // カラフルグラデーション用のシェーダーマテリアル
+                const vertexShader = `
+                    varying vec2 vUv;
+                    varying float vDistance;
+                    void main() {
+                        vUv = uv;
+                        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                        vDistance = length(worldPosition.xz);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+                
+                const fragmentShader = `
+                    uniform vec3 colors[${colors.length}];
+                    uniform float opacity;
+                    uniform float time;
+                    varying vec2 vUv;
+                    varying float vDistance;
+                    
+                    void main() {
+                        // 距離とUVに基づくグラデーション
+                        float t = vDistance * 0.3 + sin(time * 2.0) * 0.1;
+                        t = fract(t); // 0-1の範囲にループ
+                        
+                        // 複数色の補間
+                        float colorIndex = t * float(${colors.length - 1});
+                        int index1 = int(floor(colorIndex));
+                        int index2 = min(index1 + 1, ${colors.length - 1});
+                        float mix_factor = fract(colorIndex);
+                        
+                        vec3 color1 = colors[index1];
+                        vec3 color2 = colors[index2];
+                        vec3 finalColor = mix(color1, color2, mix_factor);
+                        
+                        // UV座標に基づく透明度の変化でよりダイナミックに
+                        float alpha = opacity * (0.8 + 0.2 * sin(vUv.x * 3.14159));
+                        
+                        gl_FragColor = vec4(finalColor, alpha);
+                    }
+                `;
+                
+                return new THREE.ShaderMaterial({
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader,
+                    uniforms: {
+                        colors: { value: colors.map(c => new THREE.Color(c)) },
+                        opacity: { value: opacity },
+                        time: { value: 0.0 }
+                    },
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+            }
+            
+            createDetectionRings(intensity) {
+                const ringCount = intensity.ringCount;
+                
+                for (let i = 0; i < ringCount; i++) {
+                    const ringRadius = (i + 1) * (intensity.range / ringCount);
+                    const ringGeometry = new THREE.RingGeometry(
+                        ringRadius - 0.02, 
+                        ringRadius, 
+                        64 // セグメント数を増やしてより滑らかに
+                    );
+                    
+                    // 各リングも異なる色のグラデーションを適用
+                    const colorIndex = i % intensity.colors.length;
+                    const ringGradientMaterial = this.createRingGradientMaterial(
+                        intensity.colors[colorIndex],
+                        intensity.ringOpacity,
+                        i
+                    );
+                    
+                    const ring = new THREE.Mesh(ringGeometry, ringGradientMaterial);
+                    ring.rotation.x = -Math.PI / 2;
+                    ring.position.y = 0.01;
+                    
+                    ring.userData = {
+                        baseOpacity: intensity.ringOpacity,
+                        pulsePhase: i * Math.PI / 2, // 位相をずらしてリップル効果
+                        pulseSpeed: 0.05,
+                        material: ringGradientMaterial // マテリアル参照を保存
+                    };
+                    
+                    this.detectionRings.push(ring);
+                    this.scene.add(ring);
+                }
+            }
+            
+            createRingGradientMaterial(baseColor, opacity, ringIndex) {
+                const vertexShader = `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+                
+                const fragmentShader = `
+                    uniform vec3 baseColor;
+                    uniform float opacity;
+                    uniform float time;
+                    uniform float ringIndex;
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        // 円形グラデーション効果
+                        float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
+                        float normalizedAngle = (angle + 3.14159) / (2.0 * 3.14159);
+                        
+                        // 時間とリングインデックスに基づく色の変化
+                        float hueShift = normalizedAngle + time * 0.5 + ringIndex * 0.2;
+                        
+                        // HSVライクな色変換で虹色効果
+                        vec3 color = baseColor;
+                        color.r = baseColor.r + sin(hueShift * 2.0) * 0.3;
+                        color.g = baseColor.g + sin(hueShift * 2.0 + 2.0) * 0.3;
+                        color.b = baseColor.b + sin(hueShift * 2.0 + 4.0) * 0.3;
+                        color = clamp(color, 0.0, 1.0);
+                        
+                        gl_FragColor = vec4(color, opacity);
+                    }
+                `;
+                
+                return new THREE.ShaderMaterial({
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader,
+                    uniforms: {
+                        baseColor: { value: new THREE.Color(baseColor) },
+                        opacity: { value: opacity },
+                        time: { value: 0.0 },
+                        ringIndex: { value: ringIndex }
+                    },
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+            }
+            
+            getRadarIntensity(stageNumber) {
+                if (stageNumber <= 3) {
+                    // EA段階: 遅い回転、狭い範囲 - パステルブルー系グラデーション
+                    return {
+                        range: 2.0,
+                        colors: [0x87ceeb, 0xb0e0e6, 0xe0f6ff], // スカイブルー → パウダーブルー → アリスブルー
+                        opacity: 0.15,
+                        rotationSpeed: 0.008, // さらに遅く
+                        ringCount: 2,
+                        ringOpacity: 0.1,
+                        detectionSensitivity: 0.3
+                    };
+                } else if (stageNumber <= 7) {
+                    // 岐路段階: 多彩な色合い - グリーン・イエロー・ピンク系グラデーション
+                    return {
+                        range: 3.0,
+                        colors: [0x98fb98, 0xffffe0, 0xffc0cb, 0x87ceeb, 0xdda0dd], // ペールグリーン → ライトイエロー → ピンク → スカイブルー → プラム
+                        opacity: 0.25,
+                        rotationSpeed: 0.015, // 遅めに調整
+                        ringCount: 3,
+                        ringOpacity: 0.15,
+                        detectionSensitivity: 0.5
+                    };
+                } else {
+                    // IA段階: カラフルな虹色 - 豊富な色彩のグラデーション
+                    return {
+                        range: 4.0,
+                        colors: [0xffa07a, 0xffb6c1, 0x98fb98, 0x87ceeb, 0xdda0dd, 0xf0e68c, 0xffa500], // ライトサーモン → ライトピンク → ペールグリーン → スカイブルー → プラム → カーキ → オレンジ
+                        opacity: 0.35,
+                        rotationSpeed: 0.02, // 高速から中速に変更
+                        ringCount: 4,
+                        ringOpacity: 0.2,
+                        detectionSensitivity: 0.8
+                    };
+                }
+            }
+            
+            update(time, particles) {
+                if (!this.radarBeam) return;
+                
+                // レーダービームの動的軸変化回転システム
+                this.currentAngle += this.rotationSpeed;
+                this.axisVariation += 0.003; // 軸変化の速度を少し上げる
+                
+                // 回転軸自体を動的に変化させる
+                const axisX = Math.sin(this.axisVariation * 0.7) * 0.3; // X軸方向の軸変化
+                const axisY = 1.0; // Y軸の基本成分
+                const axisZ = Math.cos(this.axisVariation * 0.5) * 0.3; // Z軸方向の軸変化
+                
+                // 正規化して回転軸ベクトルを作成
+                const axisLength = Math.sqrt(axisX * axisX + axisY * axisY + axisZ * axisZ);
+                const normalizedAxisX = axisX / axisLength;
+                const normalizedAxisY = axisY / axisLength;
+                const normalizedAxisZ = axisZ / axisLength;
+                
+                // 動的回転軸での回転を適用
+                const quaternion = new THREE.Quaternion();
+                quaternion.setFromAxisAngle(
+                    new THREE.Vector3(normalizedAxisX, normalizedAxisY, normalizedAxisZ), 
+                    this.currentAngle
+                );
+                
+                // 基本姿勢（水平配置）からの回転を適用
+                const baseQuaternion = new THREE.Quaternion();
+                baseQuaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+                
+                // 最終的な回転を設定
+                this.radarBeam.quaternion.copy(baseQuaternion.multiply(quaternion));
+                
+                // 探知リングのパルス効果とグラデーション更新
+                this.detectionRings.forEach(ring => {
+                    if (ring.userData) {
+                        const pulseValue = Math.sin(time * ring.userData.pulseSpeed + ring.userData.pulsePhase);
+                        
+                        // シェーダーマテリアルの時間更新
+                        if (ring.userData.material && ring.userData.material.uniforms) {
+                            ring.userData.material.uniforms.time.value = time * 0.001;
+                            ring.userData.material.uniforms.opacity.value = ring.userData.baseOpacity + pulseValue * 0.1;
+                        }
+                    }
+                });
+                
+                // メインレーダービームのシェーダー時間更新
+                if (this.radarBeam && this.radarBeam.material && this.radarBeam.material.uniforms) {
+                    this.radarBeam.material.uniforms.time.value = time * 0.001;
+                }
+                
+                // パーティクル探知効果（未来の拡張ポイント）
+                this.detectParticles(particles);
+            }
+            
+            detectParticles(particles) {
+                // パーティクルがレーダー範囲内にある場合の視覚効果
+                // （現在は基本実装、将来的にはより高度な探知効果を追加可能）
+                if (!particles || !this.radarBeam) return;
+                
+                particles.forEach(particle => {
+                    if (!particle.position) return;
+                    
+                    const distance = particle.position.length();
+                    const intensity = this.getRadarIntensity(this.getCurrentStage());
+                    
+                    if (distance <= intensity.range) {
+                        // 探知されたパーティクルの微細な効果
+                        // （現在は控えめな実装）
+                    }
+                });
+            }
+            
+            getCurrentStage() {
+                // 現在のステージを取得するヘルパー（メインクラスから参照）
+                return 5; // デフォルト値
+            }
+            
+            cleanup() {
+                if (this.radarBeam) {
+                    this.scene.remove(this.radarBeam);
+                    this.radarBeam.geometry.dispose();
+                    this.radarBeam.material.dispose();
+                    this.radarBeam = null;
+                }
+                
+                this.detectionRings.forEach(ring => {
+                    this.scene.remove(ring);
+                    ring.geometry.dispose();
+                    ring.material.dispose();
+                });
+                this.detectionRings = [];
+            }
+        }
+        
+        // 次元3: 対人関係次元 - ニューロンシナプス伝達システム
+        class BeamDimensionSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.particleStreams = []; // 伝達物質のパーティクルストリーム
+                this.targetCores = []; // 他のコア（目標地点）
+                this.connectionPaths = []; // 接続パス
+                this.transmissionActive = {}; // 伝達状態管理
+                this.maxConnections = 8;
+                this.particleCount = 15; // 各ストリームのパーティクル数
+            }
+            
+            createNeuralConnections(stageNumber) {
+                this.cleanup();
+                const intensity = this.getSynapseIntensity(stageNumber);
+                
+                // 段階に応じた接続数と目標コアの配置
+                const connectionCount = intensity.connectionCount;
+                this.createTargetCores(connectionCount, intensity);
+                
+                // 各接続に対してパーティクルストリームを作成
+                for (let i = 0; i < connectionCount; i++) {
+                    const targetCore = this.targetCores[i];
+                    const particleStream = this.createParticleStream(targetCore, intensity, i);
+                    this.particleStreams.push(particleStream);
+                    this.scene.add(particleStream.group);
+                    
+                    // 伝達状態を初期化
+                    this.transmissionActive[i] = {
+                        active: true,
+                        lastTransmission: Math.random() * 2000, // ランダムな開始時刻
+                        interval: 1000 + Math.random() * 2000, // 1-3秒間隔
+                        particles: []
+                    };
+                }
+            }
+            
+            createTargetCores(count, intensity) {
+                this.targetCores = [];
+                const radius = intensity.connectionDistance;
+                
+                for (let i = 0; i < count; i++) {
+                    // 均等な角度配置に少しのランダム性を加える
+                    const baseAngle = (i / count) * Math.PI * 2;
+                    const angle = baseAngle + (Math.random() - 0.5) * 0.3;
+                    const elevation = (Math.random() - 0.5) * 0.4; // Y軸の変化
+                    
+                    const position = new THREE.Vector3(
+                        Math.cos(angle) * radius,
+                        elevation,
+                        Math.sin(angle) * radius
+                    );
+                    
+                    // 目標コアの視覚表現（小さな球体）
+                    const coreGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+                    const coreMaterial = new THREE.MeshBasicMaterial({
+                        color: intensity.coreColor,
+                        transparent: true,
+                        opacity: 0.6
+                    });
+                    
+                    const core = new THREE.Mesh(coreGeometry, coreMaterial);
+                    core.position.copy(position);
+                    
+                    // グロー効果を追加
+                    const glowGeometry = new THREE.SphereGeometry(0.12, 8, 6);
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        color: intensity.glowColor,
+                        transparent: true,
+                        opacity: 0.2
+                    });
+                    
+                    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                    glow.position.copy(position);
+                    
+                    this.scene.add(core);
+                    this.scene.add(glow);
+                    
+                    this.targetCores.push({
+                        position: position.clone(),
+                        core: core,
+                        glow: glow,
+                        index: i
+                    });
+                }
+            }
+            
+            createParticleStream(targetCore, intensity, streamIndex) {
+                const group = new THREE.Group();
+                const particles = [];
+                
+                // ストリームの方向ベクトル
+                const direction = targetCore.position.clone().normalize();
+                
+                for (let i = 0; i < this.particleCount; i++) {
+                    // 各パーティクルは最初非表示
+                    const particleGeometry = new THREE.SphereGeometry(0.02, 6, 4);
+                    const particleMaterial = new THREE.MeshBasicMaterial({
+                        color: intensity.particleColors[Math.floor(Math.random() * intensity.particleColors.length)],
+                        transparent: true,
+                        opacity: 0
+                    });
+                    
+                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                    
+                    // パーティクルのメタデータ
+                    particle.userData = {
+                        originalOpacity: 0.8,
+                        progress: 0, // 0-1の進行度
+                        speed: 0.8 + Math.random() * 0.6, // 0.8-1.4 の速度
+                        startDelay: i * 100, // パーティクル間の遅延
+                        targetPosition: targetCore.position.clone(),
+                        direction: direction.clone(),
+                        active: false,
+                        pulsePhase: Math.random() * Math.PI * 2
+                    };
+                    
+                    group.add(particle);
+                    particles.push(particle);
+                }
+                
+                return {
+                    group: group,
+                    particles: particles,
+                    targetCore: targetCore,
+                    direction: direction.clone(),
+                    streamIndex: streamIndex
+                };
+            }
+            
+            getSynapseIntensity(stageNumber) {
+                if (stageNumber <= 3) {
+                    // EA段階: 少ない接続、短距離、穏やかな色彩
+                    return {
+                        connectionCount: Math.max(1, Math.min(2, stageNumber)),
+                        connectionDistance: 2.2,
+                        particleColors: [0x87ceeb, 0xb0e0e6, 0xe6f3ff], // パステルブルー系
+                        coreColor: 0xb0e0e6,
+                        glowColor: 0x87ceeb,
+                        transmissionFrequency: 0.3, // 低頻度
+                        particleSpeed: 0.6,
+                        connectionOpacity: 0.4
+                    };
+                } else if (stageNumber <= 7) {
+                    // 岐路段階: 中程度の接続、多彩な色彩
+                    const progressInPhase = (stageNumber - 3) / 4;
+                    return {
+                        connectionCount: Math.floor(3 + progressInPhase * 3), // 3-6接続
+                        connectionDistance: 2.8,
+                        particleColors: [
+                            0x98fb98, 0xffffe0, 0xffc0cb, // ペールグリーン、ライトイエロー、ピンク
+                            0x87ceeb, 0xdda0dd, 0xf0e68c  // スカイブルー、プラム、カーキ
+                        ],
+                        coreColor: 0xffc0cb,
+                        glowColor: 0x98fb98,
+                        transmissionFrequency: 0.6, // 中頻度
+                        particleSpeed: 0.8,
+                        connectionOpacity: 0.6
+                    };
+                } else {
+                    // IA段階: 豊富な接続、虹色の美しい色彩
+                    const progressInPhase = (stageNumber - 7) / 3;
+                    return {
+                        connectionCount: Math.floor(6 + progressInPhase * 2), // 6-8接続
+                        connectionDistance: 3.5,
+                        particleColors: [
+                            0xffa07a, 0xffb6c1, 0x98fb98, 0x87ceeb, // ライトサーモン、ライトピンク、ペールグリーン、スカイブルー
+                            0xdda0dd, 0xf0e68c, 0xffa500, 0xff6347  // プラム、カーキ、オレンジ、トマト
+                        ],
+                        coreColor: 0xffa07a,
+                        glowColor: 0xffb6c1,
+                        transmissionFrequency: 1.0, // 高頻度
+                        particleSpeed: 1.0,
+                        connectionOpacity: 0.8
+                    };
+                }
+            }
+            
+            update(time, stageNumber) {
+                const intensity = this.getSynapseIntensity(stageNumber);
+                const currentTime = Date.now();
+                
+                this.particleStreams.forEach((stream, streamIndex) => {
+                    if (!this.transmissionActive[streamIndex]) return;
+                    
+                    const transmissionState = this.transmissionActive[streamIndex];
+                    
+                    // 伝達開始のタイミングをチェック
+                    if (currentTime - transmissionState.lastTransmission > transmissionState.interval) {
+                        this.startTransmission(stream, intensity);
+                        transmissionState.lastTransmission = currentTime;
+                        transmissionState.interval = 800 + Math.random() * 1500; // ランダム間隔
+                    }
+                    
+                    // アクティブなパーティクルの更新
+                    stream.particles.forEach(particle => {
+                        if (!particle.userData.active) return;
+                        
+                        // パーティクルの進行
+                        particle.userData.progress += particle.userData.speed * 0.01;
+                        
+                        if (particle.userData.progress <= 1.0) {
+                            // パーティクルの位置更新（ベジェ曲線で自然な軌道）
+                            const startPos = new THREE.Vector3(0, 0, 0);
+                            const endPos = particle.userData.targetPosition;
+                            const t = particle.userData.progress;
+                            
+                            // ベジェ曲線の中間制御点を作成（弧を描く）
+                            const midPoint = startPos.clone().lerp(endPos, 0.5);
+                            midPoint.y += 0.3 * Math.sin(Math.PI * t); // 上向きの弧
+                            
+                            // 二次ベジェ曲線
+                            const pos1 = startPos.clone().lerp(midPoint, t);
+                            const pos2 = midPoint.clone().lerp(endPos, t);
+                            const finalPos = pos1.lerp(pos2, t);
+                            
+                            particle.position.copy(finalPos);
+                            
+                            // 透明度とサイズのアニメーション
+                            const fadeIn = Math.min(1.0, t * 4); // 開始時のフェードイン
+                            const fadeOut = Math.max(0, 1 - (t - 0.8) * 5); // 終了時のフェードアウト
+                            const opacity = fadeIn * fadeOut * particle.userData.originalOpacity;
+                            
+                            // パルス効果
+                            const pulse = Math.sin(time * 0.01 + particle.userData.pulsePhase) * 0.2 + 0.8;
+                            particle.material.opacity = opacity * pulse;
+                            
+                            // サイズ変化（美しい輝き）
+                            const scale = 1 + Math.sin(time * 0.02 + particle.userData.pulsePhase) * 0.3;
+                            particle.scale.setScalar(scale);
+                            
+                        } else {
+                            // パーティクルが目標に到達、接続効果を表示
+                            this.showConnectionEffect(stream.targetCore, intensity);
+                            this.resetParticle(particle);
+                        }
+                    });
+                    
+                    // 目標コアのグロー効果更新
+                    if (stream.targetCore && stream.targetCore.glow) {
+                        const glowPulse = Math.sin(time * 0.005 + streamIndex) * 0.3 + 0.7;
+                        stream.targetCore.glow.material.opacity = 0.2 * glowPulse;
+                        stream.targetCore.glow.scale.setScalar(1 + glowPulse * 0.2);
+                    }
+                });
+            }
+            
+            startTransmission(stream, intensity) {
+                // 非アクティブなパーティクルを選んでアクティブ化
+                const inactiveParticles = stream.particles.filter(p => !p.userData.active);
+                if (inactiveParticles.length === 0) return;
+                
+                // 同時に発射するパーティクル数（3-7個）
+                const burstCount = Math.floor(3 + Math.random() * 5);
+                
+                for (let i = 0; i < Math.min(burstCount, inactiveParticles.length); i++) {
+                    const particle = inactiveParticles[i];
+                    particle.userData.active = true;
+                    particle.userData.progress = 0;
+                    particle.position.set(0, 0, 0); // コアの中央から開始
+                    
+                    // ランダムな色を割り当て
+                    const randomColor = intensity.particleColors[Math.floor(Math.random() * intensity.particleColors.length)];
+                    particle.material.color.setHex(randomColor);
+                }
+            }
+            
+            showConnectionEffect(targetCore, intensity) {
+                if (!targetCore || !targetCore.core) return;
+                
+                // 接続成功の瞬間的フラッシュ効果
+                const originalOpacity = targetCore.core.material.opacity;
+                targetCore.core.material.opacity = 1.0;
+                
+                setTimeout(() => {
+                    if (targetCore.core && targetCore.core.material) {
+                        targetCore.core.material.opacity = originalOpacity;
+                    }
+                }, 200);
+                
+                // グローの一時的強化
+                if (targetCore.glow) {
+                    const originalGlowOpacity = targetCore.glow.material.opacity;
+                    targetCore.glow.material.opacity = 0.8;
+                    targetCore.glow.scale.setScalar(1.5);
+                    
+                    setTimeout(() => {
+                        if (targetCore.glow && targetCore.glow.material) {
+                            targetCore.glow.material.opacity = originalGlowOpacity;
+                            targetCore.glow.scale.setScalar(1.0);
+                        }
+                    }, 400);
+                }
+            }
+            
+            resetParticle(particle) {
+                particle.userData.active = false;
+                particle.userData.progress = 0;
+                particle.material.opacity = 0;
+                particle.scale.setScalar(1);
+                particle.position.set(0, 0, 0);
+            }
+            
+            cleanup() {
+                // パーティクルストリームのクリーンアップ
+                this.particleStreams.forEach(stream => {
+                    if (stream.group) {
+                        stream.particles.forEach(particle => {
+                            particle.geometry.dispose();
+                            particle.material.dispose();
+                        });
+                        this.scene.remove(stream.group);
+                    }
+                });
+                
+                // 目標コアのクリーンアップ
+                this.targetCores.forEach(targetCore => {
+                    if (targetCore.core) {
+                        this.scene.remove(targetCore.core);
+                        targetCore.core.geometry.dispose();
+                        targetCore.core.material.dispose();
+                    }
+                    if (targetCore.glow) {
+                        this.scene.remove(targetCore.glow);
+                        targetCore.glow.geometry.dispose();
+                        targetCore.glow.material.dispose();
+                    }
+                });
+                
+                this.particleStreams = [];
+                this.targetCores = [];
+                this.connectionPaths = [];
+                this.transmissionActive = {};
+            }
+        }
+        
         class CoreGeometryManager {
             constructor() {
                 this.currentGeometry = null;
@@ -1538,7 +2632,10 @@
                 this.currentCoreIntensity = 0.3;      // 現在のコア光量
                 this.maxCoreIntensity = 1.5;          // 最大コア光量
                 this.absorptionCount = 0;             // 吸収されたパーティクル数
-                this.dimensionRings = [];  // 次元リングの参照を保持
+                // 新しい次元効果システム
+                this.lightningDimension = null;      // 次元1: 稲光システム
+                this.radarDimension = null;          // 次元2: レーダーシステム  
+                this.beamDimension = null;           // 次元3: 光線システム
                 this.controls = null;
                 
                 // 多面体システム
@@ -1748,11 +2845,76 @@
                 // Initialize progressive light enhancement system
                 this.initializeLightVeils();
                 
-                // Create dimension rings
-                this.createDimensionRings();
+                // Initialize new dimension effect systems
+                this.initializeDimensionEffects();
                 
                 // Create stage-specific particles
                 this.createStageParticles();
+            }
+            
+            // 新しい次元効果システムの初期化
+            initializeDimensionEffects() {
+                // 既存のシステムをクリーンアップ
+                this.cleanupDimensionEffects();
+                
+                // 3つの次元システムを初期化（パーティクル参照は動的に渡す）
+                this.lightningDimension = new LightningDimensionSystem([], this.scene);
+                this.radarDimension = new RadarDimensionSystem(this.scene);
+                this.beamDimension = new BeamDimensionSystem(this.scene);
+                
+                // 現在の段階に応じてシステムを更新
+                const stageNumber = this.getStageNumber(this.currentStage);
+                this.updateDimensionEffects(stageNumber);
+            }
+            
+            // 次元効果の段階別更新
+            updateDimensionEffects(stageNumber) {
+                if (!this.lightningDimension || !this.radarDimension || !this.beamDimension) return;
+                
+                // レーダーシステムの更新
+                this.radarDimension.createRadarBeam(stageNumber);
+                
+                // 光線システムの更新
+                this.beamDimension.createNeuralConnections(stageNumber);
+                
+                // 稲光システムは動的に更新されるため、ここでは設定のみ
+            }
+            
+            // 次元効果のクリーンアップ
+            cleanupDimensionEffects() {
+                if (this.lightningDimension) {
+                    this.lightningDimension.cleanup();
+                    this.lightningDimension = null;
+                }
+                if (this.radarDimension) {
+                    this.radarDimension.cleanup();
+                    this.radarDimension = null;
+                }
+                if (this.beamDimension) {
+                    this.beamDimension.cleanup();
+                    this.beamDimension = null;
+                }
+            }
+            
+            // 次元効果アニメーションの更新
+            updateDimensionAnimations(time) {
+                const stageNumber = this.getStageNumber(this.currentStage);
+                
+                // 次元1: 稲光システムの更新（動的にパーティクル配列を更新）
+                if (this.lightningDimension) {
+                    this.lightningDimension.particles = this.particles; // パーティクル配列を動的に更新
+                    this.lightningDimension.update(stageNumber);
+                }
+                
+                // 次元2: レーダーシステムの更新
+                if (this.radarDimension) {
+                    this.radarDimension.update(time, this.particles);
+                }
+                
+                // 次元3: 光線システムの更新
+                if (this.beamDimension) {
+                    this.beamDimension.update(time, stageNumber);
+                }
             }
             
             createDimensionRings() {
@@ -3141,8 +4303,9 @@
                     this.animateCoreColor(stageData.color);
                 }
                 
-                // 段階に応じて次元リングを更新
-                this.updateDimensionRings(stageId);
+                // 新しい次元効果システムを更新
+                const stageNumber = this.getStageNumber(stageId);
+                this.updateDimensionEffects(stageNumber);
             }
             
             // 段階に応じて次元リングを更新（統一化されたビジュアルシステム）
@@ -3871,8 +5034,8 @@
                         this.core.rotation.x += 0.002;
                     }
                     
-                    // 段階的進化する次元リングのアニメーション
-                    this.animateDimensionRingsEvolution(time);
+                    // 新しい次元効果システムのアニメーション更新
+                    this.updateDimensionAnimations(time);
                     
                     // I-E ステージ: パーティクル出現アニメーション処理
                     if (this.isEmergingIE) {
