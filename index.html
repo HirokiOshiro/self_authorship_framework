@@ -2222,6 +2222,17 @@
                 this.targetCores = [];
                 const radius = intensity.connectionDistance;
                 
+                // 7種類の3D形状定義（パーティクルより大きく）
+                const geometryTypes = [
+                    { name: 'sphere', create: () => new THREE.SphereGeometry(0.15, 8, 6) },
+                    { name: 'box', create: () => new THREE.BoxGeometry(0.24, 0.24, 0.24) },
+                    { name: 'cone', create: () => new THREE.ConeGeometry(0.15, 0.30, 6) },
+                    { name: 'cylinder', create: () => new THREE.CylinderGeometry(0.12, 0.12, 0.24, 6) },
+                    { name: 'octahedron', create: () => new THREE.OctahedronGeometry(0.15) },
+                    { name: 'icosahedron', create: () => new THREE.IcosahedronGeometry(0.15) },
+                    { name: 'tetrahedron', create: () => new THREE.TetrahedronGeometry(0.18) }
+                ];
+                
                 for (let i = 0; i < count; i++) {
                     // 均等な角度配置に少しのランダム性を加える
                     const baseAngle = (i / count) * Math.PI * 2;
@@ -2234,23 +2245,52 @@
                         Math.sin(angle) * radius
                     );
                     
-                    // 目標コアの視覚表現（小さな球体）
-                    const coreGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+                    // ランダムな形状を選択
+                    const randomGeometryType = geometryTypes[Math.floor(Math.random() * geometryTypes.length)];
+                    const coreGeometry = randomGeometryType.create();
+                    
+                    // 様々な他者を表現する多彩な色彩パレット
+                    const diverseColors = [
+                        0x87ceeb, // スカイブルー - 理性的な他者
+                        0xffa07a, // ライトサーモン - 温かい他者
+                        0x98fb98, // ペールグリーン - 自然体な他者
+                        0xdda0dd, // プラム - 神秘的な他者
+                        0xf0e68c, // カーキ - 地に足ついた他者
+                        0xffb6c1, // ライトピンク - 感情豊かな他者
+                        0xffd700, // ゴールド - 輝く他者
+                        0xff6347, // トマト - 情熱的な他者
+                        0x40e0d0, // ターコイズ - 清らかな他者
+                        0xda70d6, // オーキッド - 個性的な他者
+                        0x32cd32, // ライムグリーン - 生命力ある他者
+                        0xff69b4, // ホットピンク - 活発な他者
+                        0x00ced1, // ダークターコイズ - 深い他者
+                        0xffa500, // オレンジ - エネルギッシュな他者
+                        0x9370db  // ミディアムパープル - 創造的な他者
+                    ];
+                    
+                    const randomColor = diverseColors[Math.floor(Math.random() * diverseColors.length)];
                     const coreMaterial = new THREE.MeshBasicMaterial({
-                        color: intensity.coreColor,
+                        color: randomColor,
                         transparent: true,
-                        opacity: 0.6
+                        opacity: 0.7 // 少し不透明度を上げて個性を際立たせる
                     });
                     
                     const core = new THREE.Mesh(coreGeometry, coreMaterial);
                     core.position.copy(position);
                     
-                    // グロー効果を追加
-                    const glowGeometry = new THREE.SphereGeometry(0.12, 8, 6);
+                    // グロー効果も同じ形状で少し大きく、同じ色調で
+                    const glowScale = 1.5;
+                    const glowGeometry = randomGeometryType.create();
+                    glowGeometry.scale(glowScale, glowScale, glowScale);
+                    
+                    // グローは同じ色の淡いバージョンを使用
+                    const glowColor = new THREE.Color(randomColor);
+                    glowColor.multiplyScalar(0.8); // 少し暗くして統一感を保つ
+                    
                     const glowMaterial = new THREE.MeshBasicMaterial({
-                        color: intensity.glowColor,
+                        color: glowColor,
                         transparent: true,
-                        opacity: 0.2
+                        opacity: 0.25
                     });
                     
                     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
@@ -2259,11 +2299,55 @@
                     this.scene.add(core);
                     this.scene.add(glow);
                     
+                    // 回転アニメーション用のプロパティを追加
+                    core.userData = {
+                        rotationSpeed: {
+                            x: (Math.random() - 0.5) * 0.02,
+                            y: (Math.random() - 0.5) * 0.02,
+                            z: (Math.random() - 0.5) * 0.02
+                        },
+                        baseScale: 1.0,
+                        pulseSpeed: 0.5 + Math.random() * 1.0,
+                        pulsePhase: Math.random() * Math.PI * 2,
+                        // 位置移動のパラメータ（より活発な動き）
+                        basePosition: position.clone(),
+                        movementSpeed: {
+                            x: (Math.random() - 0.5) * 0.003, // 3倍に増加
+                            y: (Math.random() - 0.5) * 0.002, // 2.5倍に増加
+                            z: (Math.random() - 0.5) * 0.003  // 3倍に増加
+                        },
+                        movementPhase: {
+                            x: Math.random() * Math.PI * 2,
+                            y: Math.random() * Math.PI * 2,
+                            z: Math.random() * Math.PI * 2
+                        },
+                        movementRadius: {
+                            x: 0.5 + Math.random() * 0.6, // X軸の移動範囲拡大
+                            y: 0.3 + Math.random() * 0.5, // Y軸の移動範囲拡大
+                            z: 0.5 + Math.random() * 0.6  // Z軸の移動範囲拡大
+                        },
+                        distanceVariation: 0.7 + Math.random() * 0.6 // 0.7-1.3倍の距離変動拡大
+                    };
+                    
+                    glow.userData = {
+                        rotationSpeed: core.userData.rotationSpeed,
+                        baseScale: glowScale,
+                        pulseSpeed: core.userData.pulseSpeed,
+                        pulsePhase: core.userData.pulsePhase,
+                        // 位置移動パラメータをグローも共有
+                        basePosition: position.clone(),
+                        movementSpeed: core.userData.movementSpeed,
+                        movementPhase: core.userData.movementPhase,
+                        movementRadius: core.userData.movementRadius,
+                        distanceVariation: core.userData.distanceVariation
+                    };
+                    
                     this.targetCores.push({
                         position: position.clone(),
                         core: core,
                         glow: glow,
-                        index: i
+                        index: i,
+                        geometryType: randomGeometryType.name
                     });
                 }
             }
@@ -2316,7 +2400,7 @@
                     // EA段階: 少ない接続、短距離、穏やかな色彩
                     return {
                         connectionCount: Math.max(1, Math.min(2, stageNumber)),
-                        connectionDistance: 2.2,
+                        connectionDistance: 5.5,
                         particleColors: [0x87ceeb, 0xb0e0e6, 0xe6f3ff], // パステルブルー系
                         coreColor: 0xb0e0e6,
                         glowColor: 0x87ceeb,
@@ -2329,7 +2413,7 @@
                     const progressInPhase = (stageNumber - 3) / 4;
                     return {
                         connectionCount: Math.floor(3 + progressInPhase * 3), // 3-6接続
-                        connectionDistance: 2.8,
+                        connectionDistance: 6.0,
                         particleColors: [
                             0x98fb98, 0xffffe0, 0xffc0cb, // ペールグリーン、ライトイエロー、ピンク
                             0x87ceeb, 0xdda0dd, 0xf0e68c  // スカイブルー、プラム、カーキ
@@ -2345,7 +2429,7 @@
                     const progressInPhase = (stageNumber - 7) / 3;
                     return {
                         connectionCount: Math.floor(6 + progressInPhase * 2), // 6-8接続
-                        connectionDistance: 3.5,
+                        connectionDistance: 6.5,
                         particleColors: [
                             0xffa07a, 0xffb6c1, 0x98fb98, 0x87ceeb, // ライトサーモン、ライトピンク、ペールグリーン、スカイブルー
                             0xdda0dd, 0xf0e68c, 0xffa500, 0xff6347  // プラム、カーキ、オレンジ、トマト
@@ -2385,7 +2469,8 @@
                         if (particle.userData.progress <= 1.0) {
                             // パーティクルの位置更新（ベジェ曲線で自然な軌道）
                             const startPos = new THREE.Vector3(0, 0, 0);
-                            const endPos = particle.userData.targetPosition;
+                            // リアルタイムのターゲット座標を使用（動的追跡）
+                            const endPos = stream.targetCore.position.clone();
                             const t = particle.userData.progress;
                             
                             // ベジェ曲線の中間制御点を作成（弧を描く）
@@ -2418,6 +2503,65 @@
                             this.resetParticle(particle);
                         }
                     });
+                    
+                    // 目標コアの回転・呼吸・位置移動アニメーション更新
+                    const targetCore = stream.targetCore;
+                    if (targetCore && targetCore.core && targetCore.glow) {
+                        // 各コアの独立した回転
+                        targetCore.core.rotation.x += targetCore.core.userData.rotationSpeed.x;
+                        targetCore.core.rotation.y += targetCore.core.userData.rotationSpeed.y;
+                        targetCore.core.rotation.z += targetCore.core.userData.rotationSpeed.z;
+                        
+                        targetCore.glow.rotation.x += targetCore.glow.userData.rotationSpeed.x;
+                        targetCore.glow.rotation.y += targetCore.glow.userData.rotationSpeed.y;
+                        targetCore.glow.rotation.z += targetCore.glow.userData.rotationSpeed.z;
+                        
+                        // 自律的位置移動（他者の動き）
+                        const movementTime = time * 0.001;
+                        const coreData = targetCore.core.userData;
+                        
+                        // 各軸で独立した三角関数による滑らかな移動
+                        const offsetX = Math.sin(movementTime * coreData.movementSpeed.x * 10 + coreData.movementPhase.x) * coreData.movementRadius.x;
+                        const offsetY = Math.sin(movementTime * coreData.movementSpeed.y * 10 + coreData.movementPhase.y) * coreData.movementRadius.y;
+                        const offsetZ = Math.cos(movementTime * coreData.movementSpeed.z * 10 + coreData.movementPhase.z) * coreData.movementRadius.z;
+                        
+                        // 距離変動（近くなったり遠くなったり）- より顕著な変化
+                        const distanceModulation = Math.sin(movementTime * 0.5 + coreData.pulsePhase) * 0.3 + 1;
+                        const finalDistanceMultiplier = coreData.distanceVariation * distanceModulation;
+                        
+                        // 新しい位置を計算
+                        const newPosition = coreData.basePosition.clone();
+                        newPosition.multiplyScalar(finalDistanceMultiplier);
+                        newPosition.add(new THREE.Vector3(offsetX, offsetY, offsetZ));
+                        
+                        // コアとグローの位置を更新
+                        targetCore.core.position.copy(newPosition);
+                        targetCore.glow.position.copy(newPosition);
+                        
+                        // targetCoreオブジェクトの位置情報も更新（パーティクル軌道計算用）
+                        targetCore.position.copy(newPosition);
+                        
+                        // 呼吸のような脈動効果（自律的生命感）
+                        const pulse = Math.sin(time * 0.001 * targetCore.core.userData.pulseSpeed + targetCore.core.userData.pulsePhase);
+                        const breathingScale = targetCore.core.userData.baseScale + pulse * 0.15;
+                        const breathingGlowScale = targetCore.glow.userData.baseScale + pulse * 0.2;
+                        
+                        targetCore.core.scale.setScalar(breathingScale);
+                        targetCore.glow.scale.setScalar(breathingGlowScale);
+                        
+                        // 色の微妙な変化（活動感を表現）- 各コアの個別色を維持
+                        const colorVariation = (Math.sin(time * 0.002 + targetCore.core.userData.pulsePhase) + 1) * 0.1;
+                        const originalColor = targetCore.core.userData.originalColor || targetCore.core.material.color.clone();
+                        
+                        // 初回時に元の色を保存
+                        if (!targetCore.core.userData.originalColor) {
+                            targetCore.core.userData.originalColor = targetCore.core.material.color.clone();
+                        }
+                        
+                        const enhancedColor = originalColor.clone();
+                        enhancedColor.multiplyScalar(1 + colorVariation);
+                        targetCore.core.material.color.copy(enhancedColor);
+                    }
                     
                     // 目標コアのグロー効果更新
                     if (stream.targetCore && stream.targetCore.glow) {
@@ -5101,12 +5245,12 @@
                         break;
                         
                     case 'Ib': case 'Ic':
-                        // 正二十面体: 複雑で美しい統合回転
-                        this.core.rotation.x += 0.004;
-                        this.core.rotation.y += 0.006;
-                        this.core.rotation.z += 0.002;
-                        // 微細な周期的変動
-                        const fine = Math.sin(time * 0.001) * 0.05;
+                        // 正二十面体: 複雑で美しい統合回転（落ち着いた速度）
+                        this.core.rotation.x += 0.002;
+                        this.core.rotation.y += 0.003;
+                        this.core.rotation.z += 0.001;
+                        // 微細な周期的変動（より穏やか）
+                        const fine = Math.sin(time * 0.001) * 0.02;
                         this.core.rotation.x += fine;
                         this.core.rotation.y += fine * 0.8;
                         this.core.rotation.z += fine * 0.6;
