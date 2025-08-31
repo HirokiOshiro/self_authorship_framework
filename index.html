@@ -1552,7 +1552,7 @@
                         duration: 3000, // 流れ星の寿命
                         frequency: 2000, // 生成頻度
                         waypointCount: 2, // 2点間移動（シンプルな流れ星）
-                        speed: 1.0, // 基本移動速度
+                        speed: 0.6, // 基本移動速度（緩やかに変更）
                         easingType: 'easeInOut' // スムーズなイージング
                     };
                 } else if (stageNumber <= 7) {
@@ -1564,7 +1564,7 @@
                         duration: 2500,
                         frequency: 1200,
                         waypointCount: 3, // 3点経由
-                        speed: 1.3, // やや高速
+                        speed: 0.6, // やや高速（緩やかに変更）
                         easingType: 'easeInOut'
                     };
                 } else {
@@ -1576,7 +1576,7 @@
                         duration: 2000,
                         frequency: 800,
                         waypointCount: 3, // 3点経由
-                        speed: 1.5, // 高速
+                        speed: 0.6, // 高速（緩やかに変更）
                         easingType: 'easeInOut'
                     };
                 }
@@ -2218,8 +2218,10 @@
                     // 伝達状態を初期化
                     this.transmissionActive[i] = {
                         active: true,
-                        lastTransmission: Math.random() * 2000, // ランダムな開始時刻
-                        interval: 1000 + Math.random() * 2000, // 1-3秒間隔
+                        lastTransmission: Math.random() * 3000, // より広いランダム開始時刻（0-3秒）
+                        interval: 600 + Math.random() * 2400, // 0.6-3秒の多様な間隔
+                        baseInterval: 1200 + Math.random() * 1800, // 基準間隔（個体差）
+                        intervalVariation: 0.3 + Math.random() * 0.7, // 間隔変動係数
                         particles: []
                     };
                 }
@@ -2381,7 +2383,7 @@
                     particle.userData = {
                         originalOpacity: 0.8,
                         progress: 0, // 0-1の進行度
-                        speed: 0.8 + Math.random() * 0.6, // 0.8-1.4 の速度
+                        speed: 0.4 + Math.random() * 0.4, // 0.4-0.8 の速度（緩やかに変更）
                         startDelay: i * 100, // パーティクル間の遅延
                         targetPosition: targetCore.position.clone(),
                         direction: direction.clone(),
@@ -2463,7 +2465,10 @@
                     if (currentTime - transmissionState.lastTransmission > transmissionState.interval) {
                         this.startTransmission(stream, intensity);
                         transmissionState.lastTransmission = currentTime;
-                        transmissionState.interval = 800 + Math.random() * 1500; // ランダム間隔
+                        // より自然なランダム間隔（個体差と変動を考慮）
+                        const baseInterval = transmissionState.baseInterval;
+                        const variation = transmissionState.intervalVariation;
+                        transmissionState.interval = baseInterval * (1 - variation + Math.random() * variation * 2);
                     }
                     
                     // アクティブなパーティクルの更新
@@ -2471,7 +2476,7 @@
                         if (!particle.userData.active) return;
                         
                         // パーティクルの進行
-                        particle.userData.progress += particle.userData.speed * 0.01;
+                        particle.userData.progress += particle.userData.speed * 0.008;
                         
                         if (particle.userData.progress <= 1.0) {
                             // パーティクルの位置更新（ベジェ曲線で自然な軌道）
