@@ -1407,6 +1407,14 @@
         
         <div class="dimension-grid">
             <div class="dimension-card">
+                <h3>💭 アイデア壁打ちツール</h3>
+                <p>現在検討中のアイデアや企画について、セルフ・オーサーシップを大切にする観点から生成AIにフィードバックをしてもらうためのプロンプト生成ツールです。</p>
+                <a href="javascript:void(0)" onclick="openIdeaFeedbackTool()" class="tool-link">
+                    ツールを開く →
+                </a>
+            </div>
+            
+            <div class="dimension-card">
                 <h3>📋 学生ペルソナ作成ツール</h3>
                 <p>多様な学生ペルソナを作成し、個々人の様々な成長シナリオの理解や学習・成長支援の検討を効果的に進められるよう設計されたツールです。</p>
                 <a href="https://hirokioshiro.github.io/persona_selection_tool/" target="_blank" class="tool-link">
@@ -8157,6 +8165,267 @@
                         iframe.style.transition = '';
                     }, 300);
                 }
+            });
+        }
+        
+        // アイデア壁打ちツール機能
+        function openIdeaFeedbackTool() {
+            // モーダルの作成
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 10000;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+                box-sizing: border-box;
+            `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: white;
+                padding: 30px;
+                border-radius: 12px;
+                width: 100%;
+                max-width: 800px;
+                max-height: 90vh;
+                overflow-y: auto;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            `;
+            
+            modalContent.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; color: #667eea;">💭 アイデア壁打ちツール</h2>
+                    <button onclick="this.closest('.idea-feedback-modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">×</button>
+                </div>
+                
+                <p style="margin-bottom: 15px; color: #666; font-size: 16px; line-height: 1.6;">
+                    <strong>🎯 このツールの目的</strong><br>
+                    現在検討中のアイデアについて、セルフ・オーサーシップの観点から生成AIにフィードバックをもらうためのプロンプトを生成します。
+                </p>
+                
+                <div style="background: #e8f4f8; border-left: 4px solid #2196f3; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                    <p style="margin: 0; color: #1976d2; font-weight: 500;">
+                        💡 <strong>効果的な活用方法</strong><br>
+                        最終的に生成AIにプロンプトを入力する際は、作成中の企画書・提案書も添付して実行するとより効果的です。
+                    </p>
+                </div>
+                
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                    <p style="margin: 0; color: #856404; font-weight: 500;">
+                        ⚠️ <strong>重要な注意事項</strong><br>
+                        • 生成AIの利用にあたってはプライバシーや機密情報に十分注意してください<br>
+                        • 企画書に対するフィードバックをもらう場合は、セキュリティの観点から<strong>Microsoft Copilot</strong>を利用してください<br>
+                        • <strong>GPT-5をオンにした上で実行</strong>してください
+                    </p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">
+                        アイデア・企画の概要
+                    </label>
+                    <textarea id="ideaContent" 
+                        placeholder="検討中のアイデアや企画の内容を入力してください。&#10;- 背景・目的&#10;- 具体的な内容&#10;- 対象者&#10;- 期待する効果など"
+                        style="width: 100%; height: 200px; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">
+                        フィードバックの観点（複数選択可）
+                    </label>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" id="recognizing" value="recognizing" checked style="margin-right: 8px;">
+                            認識論的次元：私はどのように知るのか？
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" id="intrapersonal" value="intrapersonal" checked style="margin-right: 8px;">
+                            対自関係次元：私は何者か？
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" id="interpersonal" value="interpersonal" checked style="margin-right: 8px;">
+                            対人関係次元：他者とどのように関わるか？
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="checkbox" id="phases" value="phases" checked style="margin-right: 8px;">
+                            発達段階の考慮
+                        </label>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">
+                        特に重視したい点
+                    </label>
+                    <select id="focusArea" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-family: inherit;">
+                        <option value="balanced">バランスの取れた総合的な評価</option>
+                        <option value="theory">理念・理論面の深い検討</option>
+                        <option value="practice">実践・実装面の具体的検討</option>
+                        <option value="student-centered">学生の主体性と成長</option>
+                    </select>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button onclick="generateFeedbackPrompt()" 
+                        style="background: #667eea; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-right: 10px;">
+                        プロンプトを生成
+                    </button>
+                    <button onclick="this.closest('.idea-feedback-modal').remove()" 
+                        style="background: #ccc; color: #333; border: none; padding: 12px 30px; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                        閉じる
+                    </button>
+                </div>
+                
+                <div id="generatedPrompt" style="margin-top: 30px; display: none;">
+                    <div id="completionMessage" style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 15px; margin-bottom: 20px; display: none;">
+                        <h4 style="color: #155724; margin: 0 0 10px 0; display: flex; align-items: center;">
+                            ✅ プロンプト生成完了！
+                        </h4>
+                        <p style="color: #155724; margin: 0 0 10px 0; font-weight: 500;">
+                            以下のプロンプトをコピーして生成AIに投入してください
+                        </p>
+                        <div style="background: #ffff66; border: 1px solid #f5c6cb; border-radius: 6px; padding: 12px; margin-top: 10px;">
+                            <p style="color: #721c24; margin: 0; font-size: 14px; font-weight: 500;">
+                                ⚠️ <strong>生成AI投入時の重要な注意点</strong><br>
+                                • <strong>Microsoft Copilot</strong>を使用してください（セキュリティ確保のため）<br>
+                                • <strong>GPT-5をオンにして実行</strong>してください<br>
+                                • 企画書・提案書があれば一緒に添付すると効果的です<br>
+                                • プライバシーや機密情報にご注意ください
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <h3 style="color: #667eea; margin-bottom: 15px;">生成されたプロンプト</h3>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 5px solid #667eea;">
+                        <textarea id="promptOutput" readonly 
+                            style="width: 100%; height: 300px; border: none; background: transparent; font-family: monospace; font-size: 14px; resize: vertical; box-sizing: border-box;"></textarea>
+                    </div>
+                    <button onclick="copyPromptToClipboard()" 
+                        style="background: #51cf66; color: white; border: none; padding: 10px 20px; border-radius: 6px; margin-top: 10px; cursor: pointer;">
+                        📋 クリップボードにコピー
+                    </button>
+                </div>
+            `;
+            
+            modal.className = 'idea-feedback-modal';
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // モーダル外クリックで閉じる
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+        
+        function generateFeedbackPrompt() {
+            const ideaContent = document.getElementById('ideaContent').value.trim();
+            const focusArea = document.getElementById('focusArea').value;
+            
+            if (!ideaContent) {
+                alert('アイデア・企画の概要を入力してください。');
+                return;
+            }
+            
+            // チェックされた観点を取得
+            const selectedAspects = [];
+            if (document.getElementById('recognizing').checked) selectedAspects.push('認識の仕方（Epistemological）');
+            if (document.getElementById('intrapersonal').checked) selectedAspects.push('個人内（Intrapersonal）');
+            if (document.getElementById('interpersonal').checked) selectedAspects.push('対人関係（Interpersonal）');
+            if (document.getElementById('phases').checked) selectedAspects.push('発達段階の考慮');
+            
+            const focusDescriptions = {
+                'balanced': 'バランスの取れた総合的な評価',
+                'theory': '理念・理論面の深い検討',
+                'practice': '実践・実装面の具体的検討',
+                'student-centered': '学生の主体性と成長',
+            };
+            
+            const prompt = generateDetailedPrompt(ideaContent, selectedAspects, focusDescriptions[focusArea]);
+            
+            document.getElementById('promptOutput').value = prompt;
+            document.getElementById('generatedPrompt').style.display = 'block';
+            
+            // 完了メッセージを表示
+            document.getElementById('completionMessage').style.display = 'block';
+            
+            // 完了メッセージまでスクロール
+            setTimeout(() => {
+                document.getElementById('completionMessage').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }, 100);
+        }
+        
+        function generateDetailedPrompt(ideaContent, aspects, focusArea) {
+            return `# セルフ・オーサーシップを重視した学生支援アイデア評価
+
+以下の学生支援のアイデア・企画について、セルフ・オーサーシップ理論の観点から建設的なフィードバックをお願いします。
+
+## 評価対象のアイデア・企画
+${ideaContent}
+
+## フィードバックの観点
+重視する観点：${focusArea}
+評価する次元：${aspects.join('、')}
+
+## セルフ・オーサーシップ理論の要点
+セルフ・オーサーシップとは「自分自身の信念、価値観、アイデンティティ、社会関係を内的に定義する能力」で、以下の3つの次元があります：
+
+1. **認識論的次元（Epistemological）**: 知識や真理をどう捉えるか
+   - 外的権威からの脱却 → 内的な知識構築能力の発達
+   - 複数の視点を統合し、文脈に応じた判断ができる
+
+2. **対自関係次元（Intrapersonal）**: 自己概念やアイデンティティ
+   - 他者からの承認依存 → 内的な価値観・信念の確立
+   - 自分らしさを追求し、一貫したアイデンティティを構築
+
+3. **対人関係次元（Interpersonal）**: 他者との関係性
+   - 他者に合わせる → 相互に尊重し合う関係性の構築
+   - 自分の価値観を保ちながら、他者と建設的な関係を築く
+
+## 発達段階
+- **第1段階（外的定式化）**: 外的権威に依存
+- **第2段階（岐路）**: 内的声と外的影響の間で揺れ動く
+- **第3段階（セルフ・オーサーシップ）**: 内的に定義された信念・価値観に基づいて行動
+
+## 求めるフィードバック
+
+### 1. 理念面の評価
+- このアイデアは学生のセルフ・オーサーシップの発達をどのように後押しする可能性がありますか？
+- 各次元（認識論的、対自関係、対人関係）への配慮は十分でしょうか？
+- 発達段階に応じた支援になっているでしょうか？
+
+### 2. 実践面の評価
+- 実際の実装において、学生の主体性を損なうリスクはありませんか？
+- 運営側が外的権威として機能してしまう可能性はありませんか？
+- より効果的な実践方法があれば提案してください。
+
+### 3. 企画運営側の成長促進
+このアイデアを実践する職員自身のセルフ・オーサーシップを刺激するために：
+- どのような問いかけや振り返りが必要でしょうか？
+- 運営側が注意すべき思考の癖、言葉遣い、意識下のバイアスは何でしょうか？
+- より深い自己理解や成長に向けて運営側が自分達に向けて問いかけるべき内容があれば教えてください。
+
+## お願い
+遠慮のない率直なフィードバックをお願いします。改善点や懸念点があれば具体的に指摘してください。また、このアイデアをより効果的にするための建設的な提案もお願いします。`;
+        }
+        
+        function copyPromptToClipboard() {
+            const promptText = document.getElementById('promptOutput').value;
+            navigator.clipboard.writeText(promptText).then(function() {
+                alert('プロンプトをクリップボードにコピーしました！');
+            }).catch(function(err) {
+                console.error('コピーに失敗しました: ', err);
+                alert('コピーに失敗しました。手動でテキストを選択してコピーしてください。');
             });
         }
     </script>
