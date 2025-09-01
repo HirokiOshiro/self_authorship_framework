@@ -1893,11 +1893,28 @@
             
             // 流れ星の光線描画（イージングと残像効果付き）
             renderShootingStar(star) {
-                // 既存のラインを削除
+                // 既存のラインを確実に削除
                 if (star.mainLine) {
-                    this.scene.remove(star.mainLine);
-                    star.mainLine.geometry.dispose();
-                    star.mainLine.material.dispose();
+                    if (star.mainLine.parent) {
+                        star.mainLine.parent.remove(star.mainLine);
+                    } else {
+                        this.scene.remove(star.mainLine);
+                    }
+                    
+                    // リソースを破棄
+                    if (star.mainLine.geometry) {
+                        star.mainLine.geometry.dispose();
+                    }
+                    if (star.mainLine.material) {
+                        if (star.mainLine.material.uniforms) {
+                            Object.values(star.mainLine.material.uniforms).forEach(uniform => {
+                                if (uniform.value && uniform.value.dispose) {
+                                    uniform.value.dispose();
+                                }
+                            });
+                        }
+                        star.mainLine.material.dispose();
+                    }
                     star.mainLine = null;
                 }
                 
@@ -2073,10 +2090,27 @@
                     color: star.color
                 };
                 
-                // クローンしたラインのマテリアルをコピー
-                trailSegment.line.material = star.mainLine.material.clone();
-                this.scene.add(trailSegment.line);
+                // クローンしたラインのマテリアルを深くコピー
+                const originalMaterial = star.mainLine.material;
+                if (originalMaterial.isShaderMaterial) {
+                    // ShaderMaterialの場合は完全にクローン
+                    trailSegment.line.material = originalMaterial.clone();
+                    // uniformsも個別にコピー
+                    if (originalMaterial.uniforms) {
+                        Object.keys(originalMaterial.uniforms).forEach(key => {
+                            if (originalMaterial.uniforms[key].value !== undefined) {
+                                trailSegment.line.material.uniforms[key] = {
+                                    value: originalMaterial.uniforms[key].value
+                                };
+                            }
+                        });
+                    }
+                } else {
+                    // 通常のマテリアルの場合
+                    trailSegment.line.material = originalMaterial.clone();
+                }
                 
+                this.scene.add(trailSegment.line);
                 this.trailSegments.push(trailSegment);
                 
                 // 元のラインはシーンから除去しない（クローンしたので別物）
@@ -2092,17 +2126,42 @@
                     const fadeProgress = age / this.trailFadeTime;
                     
                     if (fadeProgress >= 1.0) {
-                        // フェード完了、除去
-                        this.scene.remove(segment.line);
-                        segment.line.geometry.dispose();
-                        segment.line.material.dispose();
+                        // フェード完了、確実に除去
+                        if (segment.line && segment.line.parent) {
+                            segment.line.parent.remove(segment.line);
+                        } else if (segment.line) {
+                            this.scene.remove(segment.line);
+                        }
+                        
+                        // ジオメトリとマテリアルを確実に破棄
+                        if (segment.line.geometry) {
+                            segment.line.geometry.dispose();
+                        }
+                        if (segment.line.material) {
+                            // ShaderMaterialの場合、uniformsのテクスチャも破棄
+                            if (segment.line.material.uniforms) {
+                                Object.values(segment.line.material.uniforms).forEach(uniform => {
+                                    if (uniform.value && uniform.value.dispose) {
+                                        uniform.value.dispose();
+                                    }
+                                });
+                            }
+                            segment.line.material.dispose();
+                        }
+                        segment.line = null;
                         return false;
                     }
                     
-                    // フェードアウト効果
+                    // フェードアウト効果（両方のマテリアルタイプに対応）
                     const fadedOpacity = segment.originalOpacity * (1 - fadeProgress);
-                    if (segment.line.material.uniforms && segment.line.material.uniforms.opacity) {
-                        segment.line.material.uniforms.opacity.value = fadedOpacity;
+                    const material = segment.line.material;
+                    
+                    if (material.uniforms && material.uniforms.opacity) {
+                        // ShaderMaterialの場合
+                        material.uniforms.opacity.value = fadedOpacity;
+                    } else if (material.opacity !== undefined) {
+                        // BasicMaterialなどの場合
+                        material.opacity = fadedOpacity;
                     }
                     
                     return true;
@@ -2112,21 +2171,89 @@
             // 流れ星のクリーンアップ
             cleanupShootingStar(star) {
                 if (star.mainLine) {
-                    // メインラインは残像として使用するのでここでは削除しない
+                    // シーンから確実に除去
+                    if (star.mainLine.parent) {
+                        star.mainLine.parent.remove(star.mainLine);
+                    } else {
+                        this.scene.remove(star.mainLine);
+                    }
+                    
+                    // ジオメトリとマテリアルを破棄
+                    if (star.mainLine.geometry) {
+                        star.mainLine.geometry.dispose();
+                    }
+                    if (star.mainLine.material) {
+                        // ShaderMaterialの場合、uniformsのテクスチャも破棄
+                        if (star.mainLine.material.uniforms) {
+                            Object.values(star.mainLine.material.uniforms).forEach(uniform => {
+                                if (uniform.value && uniform.value.dispose) {
+                                    uniform.value.dispose();
+                                }
+                            });
+                        }
+                        star.mainLine.material.dispose();
+                    }
                     star.mainLine = null;
                 }
             }
             
             // 全体のクリーンアップ
             clearActiveLightning() {
-                this.activeShootingStars.forEach(star => this.cleanupShootingStar(star));
+                // アクティブな流れ星をクリーンアップ
+                this.activeShootingStars.forEach(star => {
+                    if (star.mainLine) {
+                        // シーンから確実に除去
+                        if (star.mainLine.parent) {
+                            star.mainLine.parent.remove(star.mainLine);
+                        } else {
+                            this.scene.remove(star.mainLine);
+                        }
+                        
+                        // リソースを破棄
+                        if (star.mainLine.geometry) {
+                            star.mainLine.geometry.dispose();
+                        }
+                        if (star.mainLine.material) {
+                            if (star.mainLine.material.uniforms) {
+                                Object.values(star.mainLine.material.uniforms).forEach(uniform => {
+                                    if (uniform.value && uniform.value.dispose) {
+                                        uniform.value.dispose();
+                                    }
+                                });
+                            }
+                            star.mainLine.material.dispose();
+                        }
+                        star.mainLine = null;
+                    }
+                });
                 this.activeShootingStars = [];
                 
                 // 残像セグメントもクリーンアップ
                 this.trailSegments.forEach(segment => {
-                    this.scene.remove(segment.line);
-                    segment.line.geometry.dispose();
-                    segment.line.material.dispose();
+                    if (segment.line) {
+                        // シーンから確実に除去
+                        if (segment.line.parent) {
+                            segment.line.parent.remove(segment.line);
+                        } else {
+                            this.scene.remove(segment.line);
+                        }
+                        
+                        // リソースを破棄
+                        if (segment.line.geometry) {
+                            segment.line.geometry.dispose();
+                        }
+                        if (segment.line.material) {
+                            if (segment.line.material.uniforms) {
+                                Object.values(segment.line.material.uniforms).forEach(uniform => {
+                                    if (uniform.value && uniform.value.dispose) {
+                                        uniform.value.dispose();
+                                    }
+                                });
+                            }
+                            segment.line.material.dispose();
+                        }
+                        segment.line = null;
+                    }
                 });
                 this.trailSegments = [];
             }
