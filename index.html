@@ -8254,7 +8254,7 @@
                         </label>
                         <label style="display: flex; align-items: center;">
                             <input type="checkbox" id="phases" value="phases" checked style="margin-right: 8px;">
-                            発達段階の考慮
+                            成長段階の考慮
                         </label>
                     </div>
                 </div>
@@ -8263,12 +8263,24 @@
                     <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">
                         特に重視したい点
                     </label>
-                    <select id="focusArea" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-family: inherit;">
-                        <option value="balanced">バランスの取れた総合的な評価</option>
-                        <option value="theory">理念・理論面の深い検討</option>
-                        <option value="practice">実践・実装面の具体的検討</option>
-                        <option value="student-centered">学生の主体性と成長</option>
-                    </select>
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                        <label style="display: flex; align-items: center;">
+                            <input type="radio" name="focusArea" value="balanced" checked style="margin-right: 8px;">
+                            バランスの取れた総合的な評価
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="radio" name="focusArea" value="theory" style="margin-right: 8px;">
+                            理念・理論面の深い検討
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="radio" name="focusArea" value="practice" style="margin-right: 8px;">
+                            実践・実装面の具体的検討
+                        </label>
+                        <label style="display: flex; align-items: center;">
+                            <input type="radio" name="focusArea" value="student-centered" style="margin-right: 8px;">
+                            学生の主体性と成長
+                        </label>
+                    </div>
                 </div>
                 
                 <div style="text-align: center; margin-top: 30px;">
@@ -8327,7 +8339,7 @@
         
         function generateFeedbackPrompt() {
             const ideaContent = document.getElementById('ideaContent').value.trim();
-            const focusArea = document.getElementById('focusArea').value;
+            const focusArea = document.querySelector('input[name="focusArea"]:checked').value;
             
             if (!ideaContent) {
                 alert('アイデア・企画の概要を入力してください。');
@@ -8336,10 +8348,10 @@
             
             // チェックされた観点を取得
             const selectedAspects = [];
-            if (document.getElementById('recognizing').checked) selectedAspects.push('認識の仕方（Epistemological）');
-            if (document.getElementById('intrapersonal').checked) selectedAspects.push('個人内（Intrapersonal）');
-            if (document.getElementById('interpersonal').checked) selectedAspects.push('対人関係（Interpersonal）');
-            if (document.getElementById('phases').checked) selectedAspects.push('発達段階の考慮');
+            if (document.getElementById('recognizing').checked) selectedAspects.push('認識論的次元（Epistemological）');
+            if (document.getElementById('intrapersonal').checked) selectedAspects.push('対自関係次元（Intrapersonal）');
+            if (document.getElementById('interpersonal').checked) selectedAspects.push('対人関係次元（Interpersonal）');
+            if (document.getElementById('phases').checked) selectedAspects.push('成長段階の考慮');
             
             const focusDescriptions = {
                 'balanced': 'バランスの取れた総合的な評価',
@@ -8366,7 +8378,7 @@
         }
         
         function generateDetailedPrompt(ideaContent, aspects, focusArea) {
-            return `# セルフ・オーサーシップを重視した学生支援アイデア評価
+            return `# セルフ・オーサーシップを重視した学生支援策のアイデア評価
 
 以下の学生支援のアイデア・企画について、セルフ・オーサーシップ理論の観点から建設的なフィードバックをお願いします。
 
@@ -8392,7 +8404,7 @@ ${ideaContent}
    - 他者に合わせる → 相互に尊重し合う関係性の構築
    - 自分の価値観を保ちながら、他者と建設的な関係を築く
 
-## 発達段階
+## 成長段階
 - **第1段階（外的定式化）**: 外的権威に依存
 - **第2段階（岐路）**: 内的声と外的影響の間で揺れ動く
 - **第3段階（セルフ・オーサーシップ）**: 内的に定義された信念・価値観に基づいて行動
@@ -8400,20 +8412,20 @@ ${ideaContent}
 ## 求めるフィードバック
 
 ### 1. 理念面の評価
-- このアイデアは学生のセルフ・オーサーシップの発達をどのように後押しする可能性がありますか？
+- このアイデアは学生のセルフ・オーサーシップの変容をどのように後押しする可能性がありますか？
 - 各次元（認識論的、対自関係、対人関係）への配慮は十分でしょうか？
-- 発達段階に応じた支援になっているでしょうか？
+- 成長段階に応じた支援になっているでしょうか？
 
 ### 2. 実践面の評価
 - 実際の実装において、学生の主体性を損なうリスクはありませんか？
 - 運営側が外的権威として機能してしまう可能性はありませんか？
 - より効果的な実践方法があれば提案してください。
 
-### 3. 企画運営側の成長促進
-このアイデアを実践する職員自身のセルフ・オーサーシップを刺激するために：
+### 3. 企画運営側への問いかけ
+このアイデアを実践する自分達自身の成長にもつながるように：
 - どのような問いかけや振り返りが必要でしょうか？
-- 運営側が注意すべき思考の癖、言葉遣い、意識下のバイアスは何でしょうか？
-- より深い自己理解や成長に向けて運営側が自分達に向けて問いかけるべき内容があれば教えてください。
+- 企画時に滑り込んできやすい思考の癖、言葉遣い、意識下のバイアスは何でしょうか？
+- 様々な取り組みが有機的に連携し学生の成長を後押しする環境の創発に必要なことはどのようなものがありますか？
 
 ## お願い
 遠慮のない率直なフィードバックをお願いします。改善点や懸念点があれば具体的に指摘してください。また、このアイデアをより効果的にするための建設的な提案もお願いします。`;
