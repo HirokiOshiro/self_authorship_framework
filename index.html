@@ -1451,6 +1451,730 @@
     <script>
         // Self-Authorship 3D Integration Module
         
+        // 地面移動システム - セルフ・オーサーシップの人生の旅路を地面の流れで表現
+        class GroundMovementSystem {
+            constructor(scene, camera) {
+                this.scene = scene;
+                this.camera = camera;
+                this.groundDots = [];
+                this.currentDirection = { x: 0, z: 1 }; // デフォルト：前進
+                this.speed = 0.1;
+                this.gridSize = 50;
+                this.spacing = 4;
+                this.depth = 200;
+                this.isActive = false;
+                this.currentStage = 'Ea'; // 現在のステージを追跡
+                this.behaviorState = null; // 行動状態管理
+                this.stageConfig = null; // 段階固有の設定
+                this.originalSpeed = 0.1; // 元の速度を保存
+                
+                // セルフ・オーサーシップ段階別の動作パターン（地面は前後のみ流れる）
+                this.movementPatterns = {
+                    // EA段階: 外部権威依存期 - 制限的で慎重な動き
+                    'Ea': { type: 'guided', speed: 0.06, direction: { x: 0, z: 0.8 }, pause: true },
+                    'Eb': { type: 'guided', speed: 0.05, direction: { x: 0, z: 0.9 }, pause: true },
+                    'Ec': { type: 'guided', speed: 0.04, direction: { x: 0, z: 1.0 }, pause: false },
+                    
+                    // 岐路段階: 探索と迷いの期 - 前後の動きのみで表現
+                    'EI': { type: 'exploring', speed: 0.03, direction: { x: 0, z: 0.7 }, pause: true },
+                    'E-I': { type: 'wandering', speed: 0.02, direction: { x: 0, z: 0.5 }, pause: true },
+                    'I-E': { type: 'questioning', speed: 0.02, direction: { x: 0, z: 0.2 }, pause: true },
+                    
+                    // IA段階: 内的権威確立期 - 自律的で確信に満ちた動き
+                    'IE': { type: 'emerging', speed: 0.025, direction: { x: 0, z: 1.2 }, pause: false },
+                    'Ia': { type: 'confident', speed: 0.03, direction: { x: 0, z: 1.3 }, pause: false },
+                    'Ib': { type: 'integrating', speed: 0.04, direction: { x: 0, z: 1.1 }, pause: false },
+                    'Ic': { type: 'authoring', speed: 0.05, direction: { x: 0, z: 1.4 }, pause: false }
+                };
+            }
+            
+            // 地面ドット配列の初期化
+            initializeGroundDots() {
+                // 既存のドットをクリア
+                this.clearGroundDots();
+                
+                const dotGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const dotMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                
+                // 格子状にドットを配置（波打つ地形）
+                const extraMargin = 20; // ループ処理用の余裕範囲
+                for (let x = -this.gridSize - extraMargin; x <= this.gridSize + extraMargin; x += this.spacing) {
+                    for (let z = -this.depth; z <= this.depth; z += this.spacing) {
+                        const dot = new THREE.Mesh(dotGeometry, dotMaterial);
+                        
+                        // 波打つ地形の計算（人生の起伏を表現）
+                        const waveHeight = this.calculateTerrainHeight(x, z);
+                        
+                        dot.position.set(x, -5 + waveHeight, z); // 地面レベル + 波の高さ
+                        
+                        // 波の高さに応じて透明度を調整（高いところは少し明るく）
+                        const heightOpacity = 0.4 + (waveHeight + 1) * 0.1; // 0.4〜0.6の範囲
+                        dot.material = dotMaterial.clone();
+                        dot.material.opacity = Math.min(heightOpacity, 0.7);
+                        
+                        this.groundDots.push(dot);
+                        this.scene.add(dot);
+                    }
+                }
+                
+                console.log(`[GroundSystem] Initialized ${this.groundDots.length} ground dots`);
+            }
+            
+            // 波打つ地形の高さを計算（人生の道のりの起伏を表現）
+            calculateTerrainHeight(x, z) {
+                // 複数の波を重ね合わせて自然な起伏を作成
+                const time = Date.now() * 0.0001; // ゆっくりとした時間変化
+                
+                // 段階に応じた波の強度調整
+                const stageIntensity = this.getWaveIntensityForStage();
+                
+                // 大きな波（人生の大きな起伏）
+                const largeWave = Math.sin(x * 0.05 + time) * Math.cos(z * 0.03 + time * 0.5) * 0.8 * stageIntensity.large;
+                
+                // 中程度の波（日常の変化）
+                const mediumWave = Math.sin(x * 0.15 + z * 0.1 + time * 2) * 0.4 * stageIntensity.medium;
+                
+                // 小さな波（細かい変動）
+                const smallWave = Math.sin(x * 0.3 + z * 0.4 + time * 3) * 0.2 * stageIntensity.small;
+                
+                // 距離に基づく減衰（中央から離れるほど平坦に）
+                const distanceFromCenter = Math.sqrt(x * x + z * z);
+                const dampingFactor = Math.max(0.1, Math.exp(-distanceFromCenter * 0.02));
+                
+                // 波を合成し、適度な起伏に調整
+                const combinedHeight = (largeWave + mediumWave + smallWave) * dampingFactor;
+                
+                // 最終的な高さ（-1〜1の範囲に制限）
+                return Math.max(-1, Math.min(1, combinedHeight));
+            }
+            
+            // 段階に応じた波の強度を取得
+            getWaveIntensityForStage() {
+                const stage = this.currentStage || 'Ea';
+                
+                // 各段階の特徴に応じた波の強度設定
+                const intensityMap = {
+                    // EA段階: 穏やかな波（安定した環境）
+                    'Ea': { large: 0.6, medium: 0.8, small: 1.0 },
+                    // EB段階: 激しい波（葛藤と混乱）
+                    'Eb': { large: 1.2, medium: 1.4, small: 1.6 },
+                    // SA段階: やや不安定な波（自分らしさの模索）
+                    'Sa': { large: 0.9, medium: 1.1, small: 1.3 },
+                    // SB段階: 変動の大きい波（価値観の衝突）
+                    'Sb': { large: 1.1, medium: 1.3, small: 1.1 },
+                    // SAA段階: 徐々に安定する波（内なる声の確立）
+                    'SAa': { large: 0.8, medium: 1.0, small: 0.9 },
+                    // SAB段階: 複雑な波（複数の価値観の統合）
+                    'SAb': { large: 1.0, medium: 1.2, small: 1.0 },
+                    // デフォルト
+                    'default': { large: 0.8, medium: 1.0, small: 1.0 }
+                };
+                
+                return intensityMap[stage] || intensityMap['default'];
+            }
+            
+            // 段階に応じた動作パターンの設定
+            setMovementPattern(stage) {
+                if (!this.movementPatterns[stage]) {
+                    console.warn(`[GroundSystem] Unknown stage: ${stage}`);
+                    return;
+                }
+                
+                const pattern = this.movementPatterns[stage];
+                this.speed = pattern.speed;
+                this.currentDirection = { ...pattern.direction };
+                this.currentStage = stage; // 現在のステージを更新
+                
+                // 段階固有の行動パターンを初期化
+                this.initializeStageSpecificBehaviors(stage, pattern);
+                
+                console.log(`[GroundSystem] Set pattern for stage ${stage}:`, pattern);
+            }
+            
+            // 段階固有の行動パターンを初期化
+            initializeStageSpecificBehaviors(stage, pattern) {
+                // 段階別の特殊行動頻度設定を先に設定
+                this.stageConfig = this.getStageSpecificConfig(stage);
+                
+                // 行動状態の初期化
+                this.behaviorState = {
+                    currentBehavior: 'normal', // normal, pausing, wandering
+                    behaviorStartTime: Date.now(),
+                    behaviorDuration: 0,
+                    pauseCounter: 0,
+                    wanderDirection: { x: 0, z: 1 },
+                    // 振り返り関連のプロパティ
+                    shouldReflect: false,           // 立ち止まり中に振り返るかどうか
+                    reflectionAngle: 0,             // 振り返り角度
+                    reflectionStartTime: null,      // 振り返り開始時刻
+                    nextBehaviorTime: Date.now() + this.calculateNextBehaviorDelay()
+                };
+            }
+            
+            // 段階別の詳細設定を取得
+            getStageSpecificConfig(stage) {
+                const configs = {
+                    // EA段階: 慎重で規則的な動き
+                    'Ea': {
+                        pauseFrequency: 0.1, // 高い立ち止まり頻度
+                        pauseDuration: [800, 1000], // 1-2.5秒の立ち止まり
+                        wanderFrequency: 0.1, // 少ない迷い
+                        wanderIntensity: 0.2, // 軽い迷い
+                        reflectionFrequency: 0.4, // 高い振り返り頻度
+                        reflectionAngle: Math.PI / 4, // 45度の振り返り
+                        behaviorTransition: 3000 // 3秒間隔での行動変化
+                    },
+                    'Eb': {
+                        pauseFrequency: 0.5, // より高い立ち止まり頻度（複数権威確認のため）
+                        pauseDuration: [1200, 2500], // 長めの停止（複数方向確認時間）
+                        wanderFrequency: 0.1, // 迷いは控えめ（振り返りを重視）
+                        wanderIntensity: 0.25,
+                        reflectionFrequency: 0.8, // 非常に高い振り返り頻度
+                        reflectionAngle: Math.PI, // 180度を基本とし、複数段階で実装
+                        behaviorTransition: 2200, // やや短めの間隔で頻繁な権威確認
+                        // Eb専用: 複数権威確認パターン
+                        isMultiAuthorityScanning: true,
+                        authorityDirections: [
+                            Math.PI / 6,      // 右30度
+                            -Math.PI / 6,     // 左30度  
+                            Math.PI / 3,      // 右60度
+                            -Math.PI / 3,     // 左60度
+                            Math.PI * 0.75,   // 右135度
+                            -Math.PI * 0.75,  // 左135度
+                            Math.PI           // 後方180度
+                        ]
+                    },
+                    'Ec': {
+                        pauseFrequency: 0.25,
+                        pauseDuration: [600, 1500],
+                        wanderFrequency: 0.2,
+                        wanderIntensity: 0.4,
+                        reflectionFrequency: 0.3,
+                        reflectionAngle: Math.PI / 1,
+                        behaviorTransition: 2500
+                    },
+                    
+                    // 岐路段階: 最も複雑で変化に富んだ動き
+                    'EI': {
+                        pauseFrequency: 0.4, // 非常に高い立ち止まり頻度
+                        pauseDuration: [1500, 3000], // 長い思考時間
+                        wanderFrequency: 0.6, // 高い迷い頻度
+                        wanderIntensity: 0.8, // 強い迷い
+                        reflectionFrequency: 0.5,
+                        reflectionAngle: Math.PI * 1, // 180度の振り返り
+                        behaviorTransition: 1500 // 頻繁な行動変化
+                    },
+                    'E-I': {
+                        pauseFrequency: 0.5, // 最高の立ち止まり頻度
+                        pauseDuration: [2000, 4000], // 最も長い思考時間
+                        wanderFrequency: 0.7, // 最高の迷い頻度
+                        wanderIntensity: 1.0, // 最強の迷い
+                        reflectionFrequency: 0.6,
+                        reflectionAngle: Math.PI * 1.5, // 270度の振り返り
+                        behaviorTransition: 1200 // 最も頻繁な行動変化
+                    },
+                    'I-E': {
+                        pauseFrequency: 0.4,
+                        pauseDuration: [1500, 3500],
+                        wanderFrequency: 0.5,
+                        wanderIntensity: 0.9,
+                        reflectionFrequency: 0.7, // 最高の振り返り頻度
+                        reflectionAngle: Math.PI * 0.75, // 135度の振り返り
+                        behaviorTransition: 1800
+                    },
+                    
+                    // IA段階: 確信を持った動きだが時折の熟考
+                    'IE': {
+                        pauseFrequency: 0.15, // 低い立ち止まり頻度
+                        pauseDuration: [500, 1200], // 短い思考時間
+                        wanderFrequency: 0.1, // 少ない迷い
+                        wanderIntensity: 0.3, // 軽い迷い
+                        reflectionFrequency: 0.2, // 少ない振り返り
+                        reflectionAngle: Math.PI / 6, // 30度の軽い振り返り
+                        behaviorTransition: 4000 // ゆっくりとした行動変化
+                    },
+                    'Ia': {
+                        pauseFrequency: 0.1,
+                        pauseDuration: [300, 800],
+                        wanderFrequency: 0.05,
+                        wanderIntensity: 0.2,
+                        reflectionFrequency: 0.15,
+                        reflectionAngle: Math.PI / 8,
+                        behaviorTransition: 5000
+                    },
+                    'Ib': {
+                        pauseFrequency: 0.12,
+                        pauseDuration: [400, 1000],
+                        wanderFrequency: 0.08,
+                        wanderIntensity: 0.25,
+                        reflectionFrequency: 0.18,
+                        reflectionAngle: Math.PI / 6,
+                        behaviorTransition: 4500
+                    },
+                    'Ic': {
+                        pauseFrequency: 0.08, // 最も低い立ち止まり頻度
+                        pauseDuration: [200, 600], // 最も短い思考時間
+                        wanderFrequency: 0.03, // 最も少ない迷い
+                        wanderIntensity: 0.15, // 最も軽い迷い
+                        reflectionFrequency: 0.1, // 最も少ない振り返り
+                        reflectionAngle: Math.PI / 12, // 15度の非常に軽い振り返り
+                        behaviorTransition: 6000 // 最もゆっくりとした行動変化
+                    }
+                };
+                
+                return configs[stage] || configs['Ea']; // デフォルトはEa段階
+            }
+            
+            // 地面ドットのアニメーション更新
+            updateGroundMovement() {
+                if (!this.isActive || this.groundDots.length === 0) return;
+                
+                const currentTime = Date.now();
+                
+                // 段階固有の行動パターンを更新
+                this.updateStageSpecificBehaviors(currentTime);
+                
+                // 現在の行動に基づいて移動方向と速度を決定
+                const adjustedMovement = this.calculateAdjustedMovement();
+                
+                // ドットを現在の方向に移動（地面は前後のみ、左右には動かない）
+                this.groundDots.forEach(dot => {
+                    // X方向（左右）の移動は無効化し、Z方向（前後）のみ適用
+                    // dot.position.x += adjustedMovement.speed * adjustedMovement.direction.x; // 左右移動を無効化
+                    dot.position.z += adjustedMovement.speed * adjustedMovement.direction.z; // 前後移動のみ
+                    
+                    // 波打つ地形の動的更新（時間とともに変化する起伏）
+                    const waveHeight = this.calculateTerrainHeight(dot.position.x, dot.position.z);
+                    dot.position.y = -5 + waveHeight; // 基準レベル + 波の高さ
+                    
+                    // 波の高さに応じて透明度を動的に調整
+                    const heightOpacity = 0.4 + (waveHeight + 1) * 0.1; // 0.4〜0.6の範囲
+                    dot.material.opacity = Math.min(heightOpacity, 0.7);
+                    
+                    // ドットが範囲外に出たら反対側に戻す（無限ループ効果）
+                    const extraMargin = 20;
+                    if (dot.position.z > 50) {
+                        dot.position.z = -this.depth;
+                    }
+                    if (dot.position.z < -this.depth) {
+                        dot.position.z = 50;
+                    }
+                    // X方向のループは維持（初期配置のため）
+                    if (dot.position.x > this.gridSize + extraMargin) {
+                        dot.position.x = -this.gridSize - extraMargin;
+                    }
+                    if (dot.position.x < -this.gridSize - extraMargin) {
+                        dot.position.x = this.gridSize + extraMargin;
+                    }
+                });
+            }
+            
+            // 段階固有の行動パターンを更新
+            updateStageSpecificBehaviors(currentTime) {
+                if (!this.behaviorState || !this.stageConfig) return;
+                
+                const timeSinceLastBehavior = currentTime - this.behaviorState.behaviorStartTime;
+                
+                // 次の行動切り替えタイミングかチェック
+                if (currentTime >= this.behaviorState.nextBehaviorTime) {
+                    this.selectNextBehavior(currentTime);
+                }
+                
+                // 現在の行動を実行
+                this.executeBehavior(timeSinceLastBehavior);
+            }
+            
+            // 次の行動パターンを選択
+            selectNextBehavior(currentTime) {
+                const config = this.stageConfig;
+                const random = Math.random();
+                
+                let selectedBehavior = 'normal';
+                
+                // 確率に基づいて行動を選択（reflectingは除外し、pausingに統合）
+                if (random < config.pauseFrequency) {
+                    selectedBehavior = 'pausing';
+                    this.behaviorState.behaviorDuration = this.randomBetween(
+                        config.pauseDuration[0], 
+                        config.pauseDuration[1]
+                    );
+                    // 立ち止まり中に振り返りが発生するかを決定
+                    this.behaviorState.shouldReflect = Math.random() < config.reflectionFrequency;
+                    if (this.behaviorState.shouldReflect) {
+                        this.behaviorState.reflectionAngle = config.reflectionAngle;
+                        this.behaviorState.reflectionStartTime = null; // 後で設定
+                        console.log(`[GroundSystem] Pausing with reflection (angle: ${config.reflectionAngle})`);
+                    }
+                } else if (random < config.pauseFrequency + config.wanderFrequency) {
+                    selectedBehavior = 'wandering';
+                    this.behaviorState.behaviorDuration = this.randomBetween(1000, 3000);
+                    // 迷い方向を前後のみに制限（左右の迷いは除外）
+                    const wanderIntensity = (Math.random() - 0.5) * config.wanderIntensity; // -0.5〜0.5の範囲
+                    this.behaviorState.wanderDirection = {
+                        x: 0, // 左右の迷いを無効化
+                        z: 1 + wanderIntensity // 前後のみの変動
+                    };
+                } else {
+                    selectedBehavior = 'normal';
+                    this.behaviorState.behaviorDuration = this.randomBetween(2000, 5000);
+                }
+                
+                // 行動状態を更新
+                this.behaviorState.currentBehavior = selectedBehavior;
+                this.behaviorState.behaviorStartTime = currentTime;
+                this.behaviorState.nextBehaviorTime = currentTime + 
+                    this.behaviorState.behaviorDuration + 
+                    this.calculateNextBehaviorDelay();
+                
+                console.log(`[GroundSystem] Behavior changed to: ${selectedBehavior} for ${this.behaviorState.behaviorDuration}ms`);
+            }
+            
+            // 現在の行動を実行
+            executeBehavior(timeSinceStart) {
+                const behavior = this.behaviorState.currentBehavior;
+                const progress = Math.min(timeSinceStart / this.behaviorState.behaviorDuration, 1.0);
+                
+                switch (behavior) {
+                    case 'pausing':
+                        this.executePausingBehavior(progress);
+                        break;
+                    case 'wandering':
+                        this.executeWanderingBehavior(progress);
+                        break;
+                    case 'normal':
+                    default:
+                        this.executeNormalBehavior();
+                        break;
+                }
+            }
+            
+            // 立ち止まり行動：自然な減速・加速と微細な揺らぎを含む
+            executePausingBehavior(progress) {
+                // 元の速度を保存
+                if (!this.originalSpeed) {
+                    this.originalSpeed = this.movementPatterns[this.currentStage]?.speed || 0.1;
+                }
+                
+                // 立ち止まりフェーズの時間配分（よりなめらかに）
+                const decelPhase = 0.35;      // 減速フェーズ
+                const pausedPhase = 0.3;      // 停止フェーズ（揺らぎあり）
+                const accelPhase = 0.35;      // 加速フェーズ
+                
+                let speedMultiplier = 0;
+                let reflectionAngle = 0;
+                let microMovement = { x: 0, z: 0 };
+                
+                // 現在時刻（揺らぎ計算用）
+                const currentTime = Date.now();
+                const timeOffset = this.behaviorState.behaviorStartTime || currentTime;
+                
+                if (progress <= decelPhase) {
+                    // フェーズ1: 自然な減速（イージングアウト）
+                    const decelProgress = progress / decelPhase;
+                    // スムーズな減速カーブ (ease-out)
+                    speedMultiplier = 1 - Math.pow(decelProgress, 2.5);
+                    
+                } else if (progress <= decelPhase + pausedPhase) {
+                    // フェーズ2: 微細な揺らぎのある停止状態
+                    const pausedProgress = (progress - decelPhase) / pausedPhase;
+                    
+                    // 基本速度は非常に低速（完全停止ではない）
+                    speedMultiplier = 0.05;
+                    
+                    // 微細な揺らぎ（呼吸のような動き）
+                    const breathingCycle = (currentTime - timeOffset) * 0.002; // ゆっくりとした呼吸
+                    const nervousTremor = (currentTime - timeOffset) * 0.008;   // 細かい震え
+                    
+                    microMovement.x = Math.sin(breathingCycle) * 0.01 + Math.sin(nervousTremor) * 0.005;
+                    microMovement.z = Math.cos(breathingCycle * 0.7) * 0.008 + Math.cos(nervousTremor * 1.3) * 0.003;
+                    
+                    // 振り返りが予定されている場合
+                    if (this.behaviorState.shouldReflect) {
+                        if (!this.behaviorState.reflectionStartTime) {
+                            this.behaviorState.reflectionStartTime = currentTime;
+                        }
+                        
+                        // Eb段階の特別な複数権威スキャニング動作
+                        if (this.currentStage === 'Eb' && this.stageConfig.isMultiAuthorityScanning) {
+                            reflectionAngle = this.executeMultiAuthorityScanning(pausedProgress);
+                        } else {
+                            // 他の段階：通常の振り返り動作
+                            const reflectionCycle = pausedProgress * Math.PI * 1.5; // 1.5往復
+                            const reflectionIntensity = Math.sin(pausedProgress * Math.PI); // 中央で最大
+                            reflectionAngle = this.behaviorState.reflectionAngle * 
+                                            Math.sin(reflectionCycle) * 
+                                            reflectionIntensity * 0.6;
+                        }
+                    }
+                    
+                } else {
+                    // フェーズ3: 自然な加速（イージングイン）
+                    const accelProgress = (progress - decelPhase - pausedPhase) / accelPhase;
+                    // スムーズな加速カーブ (ease-in)
+                    speedMultiplier = Math.pow(accelProgress, 1.8);
+                    
+                    // 振り返り動作を徐々に停止
+                    const fadeOutReflection = 1 - accelProgress;
+                    reflectionAngle *= fadeOutReflection;
+                }
+                
+                // 方向の調整（振り返り角度 + 微細な揺らぎを適用）
+                const originalDirection = this.movementPatterns[this.currentStage]?.direction || { x: 0, z: 1 };
+                
+                if (Math.abs(reflectionAngle) > 0.001) {
+                    // 振り返り中: 元の方向を回転
+                    const cos = Math.cos(reflectionAngle);
+                    const sin = Math.sin(reflectionAngle);
+                    
+                    // スキャニング動作の場合は、速度を維持して方向のみ変更
+                    const isScanning = this.currentStage === 'Eb' && 
+                                     this.stageConfig.isMultiAuthorityScanning && 
+                                     this.behaviorState.shouldReflect;
+                    
+                    if (isScanning && speedMultiplier < 0.1) {
+                        // スキャニング時は最低限の動きを保証
+                        const scanningSpeed = 0.08; // 視認可能な速度
+                        this.currentDirection.x = (originalDirection.x * cos - originalDirection.z * sin) * scanningSpeed + microMovement.x;
+                        this.currentDirection.z = (originalDirection.x * sin + originalDirection.z * cos) * scanningSpeed + microMovement.z;
+                    } else {
+                        // 通常の振り返り
+                        this.currentDirection.x = (originalDirection.x * cos - originalDirection.z * sin) * speedMultiplier + microMovement.x;
+                        this.currentDirection.z = (originalDirection.x * sin + originalDirection.z * cos) * speedMultiplier + microMovement.z;
+                    }
+                } else {
+                    // 通常時: 元の方向 + 微細な揺らぎ
+                    this.currentDirection.x = originalDirection.x * speedMultiplier + microMovement.x;
+                    this.currentDirection.z = originalDirection.z * speedMultiplier + microMovement.z;
+                }
+                
+                // 速度の設定（最小値を保証して完全停止を避ける）
+                this.speed = Math.max(this.originalSpeed * speedMultiplier, 0.002);
+            }
+            
+            // 迷い行動：より自然な方向転換と速度変化
+            executeWanderingBehavior(progress) {
+                // 元の速度を保存
+                if (!this.originalSpeed) {
+                    this.originalSpeed = this.movementPatterns[this.currentStage]?.speed || 0.1;
+                }
+                
+                // 迷い行動を3つのフェーズに分割
+                const transitionIn = 0.2;    // 迷い始め
+                const wanderCore = 0.6;      // 迷いのメイン
+                const transitionOut = 0.2;   // 迷いからの復帰
+                
+                let directionBlend = 0;
+                let speedMultiplier = 1;
+                
+                if (progress <= transitionIn) {
+                    // フェーズ1: 通常方向から迷い方向への漸進的変化
+                    const easeIn = progress / transitionIn;
+                    directionBlend = Math.pow(easeIn, 2); // ease-in
+                    speedMultiplier = 1 - easeIn * 0.4; // 徐々に減速
+                    
+                } else if (progress <= transitionIn + wanderCore) {
+                    // フェーズ2: メインの迷い動作（複雑な波状動き）
+                    const coreProgress = (progress - transitionIn) / wanderCore;
+                    directionBlend = 1;
+                    
+                    // 複数の波を重ねたより複雑な迷い
+                    const wave1 = Math.sin(coreProgress * Math.PI * 3) * 0.6;
+                    const wave2 = Math.sin(coreProgress * Math.PI * 5 + Math.PI/3) * 0.3;
+                    const wave3 = Math.sin(coreProgress * Math.PI * 2 + Math.PI/6) * 0.1;
+                    const combinedWave = (wave1 + wave2 + wave3) * 0.5 + 0.5;
+                    
+                    speedMultiplier = 0.4 + combinedWave * 0.4; // 0.4-0.8の範囲で変動
+                    
+                } else {
+                    // フェーズ3: 迷いから通常方向への復帰
+                    const easeOut = (progress - transitionIn - wanderCore) / transitionOut;
+                    directionBlend = 1 - Math.pow(easeOut, 1.5); // ease-out
+                    speedMultiplier = 0.6 + easeOut * 0.4; // 通常速度に復帰
+                }
+                
+                // 基本方向と迷い方向をブレンド
+                const originalDirection = this.movementPatterns[this.currentStage]?.direction || { x: 0, z: 1 };
+                this.currentDirection.x = originalDirection.x * (1 - directionBlend) + 
+                    this.behaviorState.wanderDirection.x * directionBlend;
+                this.currentDirection.z = originalDirection.z * (1 - directionBlend) + 
+                    this.behaviorState.wanderDirection.z * directionBlend;
+                
+                // スムーズな速度変化
+                this.speed = this.originalSpeed * speedMultiplier;
+            }
+            
+            // 通常行動：基本的な前進（微細な揺らぎ付き）
+            executeNormalBehavior() {
+                // 元の方向性と速度を復元
+                if (this.movementPatterns[this.currentStage]) {
+                    const original = this.movementPatterns[this.currentStage];
+                    
+                    // 基本方向を設定
+                    let baseX = original.direction.x;
+                    let baseZ = original.direction.z;
+                    
+                    // 歩行の自然な揺らぎを追加
+                    const currentTime = Date.now();
+                    const walkingRhythm = currentTime * 0.006; // 歩行リズム
+                    const breathingRhythm = currentTime * 0.001; // 呼吸リズム
+                    
+                    // 左右の微細な揺れ（歩行による自然な動き）
+                    const lateralSway = Math.sin(walkingRhythm) * 0.015;
+                    const forwardVariation = Math.sin(breathingRhythm) * 0.008;
+                    
+                    // 段階別の揺らぎ強度調整
+                    const stageMultiplier = this.getStageAgitationLevel();
+                    
+                    this.currentDirection.x = baseX + lateralSway * stageMultiplier;
+                    this.currentDirection.z = baseZ + forwardVariation * stageMultiplier;
+                    
+                    // 速度にも微細な変動を追加
+                    const speedVariation = 1 + Math.sin(walkingRhythm * 0.7) * 0.05 * stageMultiplier;
+                    this.speed = original.speed * speedVariation;
+                    this.originalSpeed = original.speed;
+                }
+            }
+            
+            // 段階別の動揺レベルを取得
+            getStageAgitationLevel() {
+                const agitationLevels = {
+                    'Ea': 0.8,   // 外部権威期：やや緊張
+                    'Eb': 0.9,   
+                    'Ec': 1.0,   
+                    'EI': 1.5,   // 岐路期：高い動揺
+                    'E-I': 1.8,  // 最高の迷い
+                    'I-E': 1.6,  
+                    'IE': 1.2,   // 統合期：減少
+                    'Ia': 0.7,   // 内的権威期：安定
+                    'Ib': 0.5,   
+                    'Ic': 0.3    // 最も安定
+                };
+                return agitationLevels[this.currentStage] || 1.0;
+            }
+            
+            // Eb段階専用: 複数権威をスキャニングする動作（非常にゆっくりした人間的な動き）
+            executeMultiAuthorityScanning(pausedProgress) {
+                const config = this.stageConfig;
+                const directions = config.authorityDirections;
+                
+                if (!directions || directions.length === 0) {
+                    return 0; // フォールバック
+                }
+                
+                // より人間的なスキャニング設定
+                const totalScans = Math.min(directions.length, 6); // より多くの方向スキャン
+                const scanningCycles = 0.3; // さらに少ないサイクル（よりゆっくり）
+                const totalProgress = pausedProgress * scanningCycles;
+                
+                // 現在のスキャン対象を決定
+                const currentScanIndex = Math.floor(totalProgress * totalScans) % totalScans;
+                const scanPhaseProgress = (totalProgress * totalScans) % 1;
+                
+                // ランダムな角度設定（左右均等に分散）
+                const randomSeed = Math.floor(Date.now() / 8000); // 8秒ごとに新しいランダム設定
+                const rng = this.createSeededRandom(randomSeed + currentScanIndex);
+                
+                // 左右のランダム角度を生成
+                const isLeft = (currentScanIndex % 2 === 0); // 偶数は左、奇数は右
+                const baseAngle = isLeft ? -1 : 1; // 左は負、右は正
+                const randomAngleRange = (Math.PI / 8) + (rng() * Math.PI / 6); // 22.5度〜52.5度の範囲
+                const targetAngle = baseAngle * randomAngleRange;
+                
+                // 非常にゆっくりとしたスムーズな移行
+                let easedProgress;
+                if (scanPhaseProgress < 0.9) {
+                    // 前の角度から目標角度への移行（非常にゆっくり）
+                    const transitionProgress = scanPhaseProgress / 0.9;
+                    easedProgress = Math.pow(transitionProgress, 6); // 非常に緩やかなease-in
+                } else {
+                    // 目標角度での滞在
+                    easedProgress = 1;
+                }
+                
+                // 前回の角度から現在の角度への非常に滑らかな補間
+                const prevAngle = currentScanIndex > 0 ? 
+                    this.getPreviousRandomAngle(randomSeed + currentScanIndex - 1) : 0;
+                
+                const interpolatedAngle = prevAngle + (targetAngle - prevAngle) * easedProgress;
+                
+                // 非常に控えめな不安定さ
+                const nervousness = Math.sin(Date.now() * 0.002) * 0.005; // さらに穏やかな動き
+                
+                return interpolatedAngle + nervousness;
+            }
+            
+            // シード付きランダム関数（一貫した疑似ランダム）
+            createSeededRandom(seed) {
+                let x = Math.sin(seed) * 10000;
+                return function() {
+                    x = Math.sin(x) * 10000;
+                    return x - Math.floor(x);
+                };
+            }
+            
+            // 前の角度を再計算（一貫性のため）
+            getPreviousRandomAngle(seed) {
+                const rng = this.createSeededRandom(seed);
+                const isLeft = (seed % 2 === 0);
+                const baseAngle = isLeft ? -1 : 1;
+                const randomAngleRange = (Math.PI / 8) + (rng() * Math.PI / 6);
+                return baseAngle * randomAngleRange;
+            }
+            
+            // 調整された移動を計算
+            calculateAdjustedMovement() {
+                return {
+                    direction: { ...this.currentDirection },
+                    speed: this.speed
+                };
+            }
+            
+            // 次の行動までの遅延時間を計算
+            calculateNextBehaviorDelay() {
+                if (!this.stageConfig) {
+                    return 3000; // デフォルト値
+                }
+                const baseDelay = this.stageConfig.behaviorTransition || 3000;
+                const variation = baseDelay * 0.3; // 30%の変動
+                return baseDelay + (Math.random() - 0.5) * variation;
+            }
+            
+            // 範囲内のランダム数値を生成
+            randomBetween(min, max) {
+                return min + Math.random() * (max - min);
+            }
+            
+            // 地面システムの有効化/無効化
+            setActive(active) {
+                this.isActive = active;
+                this.groundDots.forEach(dot => {
+                    dot.visible = active;
+                });
+                console.log(`[GroundSystem] ${active ? 'Activated' : 'Deactivated'}`);
+            }
+            
+            // 地面ドットのクリーンアップ
+            clearGroundDots() {
+                this.groundDots.forEach(dot => {
+                    this.scene.remove(dot);
+                    if (dot.geometry) dot.geometry.dispose();
+                    if (dot.material) dot.material.dispose();
+                });
+                this.groundDots = [];
+            }
+            
+            // システム全体のクリーンアップ
+            cleanup() {
+                this.clearGroundDots();
+                this.isActive = false;
+                console.log('[GroundSystem] Cleanup completed');
+            }
+        }
+        
         // 説明表示システム - 各要素の意味を簡潔に表示
         class ExplanationDisplaySystem {
             constructor(container) {
@@ -1589,7 +2313,7 @@
                     return [
                         ...baseExplanations,
                         { id: 'particles', icon: '✦', text: 'パーティクル: 内面の経験・気づき', color: '#98fb98' },
-                        { id: 'lightning', icon: '⚡', text: '光線: 自己の内面を見つめる動き', color: '#ffd700' },
+                        { id: 'lightning', icon: '⚡', text: '光の線: 自己の内面を見つめる動き', color: '#ffd700' },
                         { id: 'radar', icon: '📡', text: 'レーダー: 新しい視点・知識の探索', color: '#ff69b4' },
                         { id: 'connections', icon: '💬', text: '伝達信号: 他者との関係・対話', color: '#40e0d0' }
                     ];
@@ -1598,7 +2322,7 @@
                     return [
                         ...baseExplanations,
                         { id: 'particles', icon: '✦', text: 'パーティクル: 内面の経験・気づき', color: '#98fb98' },
-                        { id: 'lightning', icon: '⚡', text: '光線: 自己の内面を見つめる動き', color: '#ffd700' },
+                        { id: 'lightning', icon: '⚡', text: '光の線: 自己の内面を見つめる動き', color: '#ffd700' },
                         { id: 'radar', icon: '📡', text: 'レーダー: 新しい視点・知識の探索', color: '#ff69b4' },
                         { id: 'connections', icon: '💬', text: '伝達信号: 他者との関係・対話', color: '#40e0d0' }
                     ];
@@ -1607,7 +2331,7 @@
                     return [
                         ...baseExplanations,
                         { id: 'particles', icon: '✦', text: 'パーティクル: 内面の経験・気づき', color: '#98fb98' },
-                        { id: 'lightning', icon: '⚡', text: '光線: 自己の内面を見つめる動き', color: '#ffd700' },
+                        { id: 'lightning', icon: '⚡', text: '光の線: 自己の内面を見つめる動き', color: '#ffd700' },
                         { id: 'radar', icon: '📡', text: 'レーダー: 新しい視点・知識の探索', color: '#ff69b4' },
                         { id: 'connections', icon: '💬', text: '伝達信号: 他者との関係・対話', color: '#40e0d0' }
                     ];
@@ -3470,6 +4194,12 @@
                 this.maxZoom = 20;
                 this.zoomSpeed = 0.1;
                 
+                // カメラ回転制御（見回し効果用）
+                this.cameraRotationAngle = 0; // 現在のカメラ回転角度
+                this.baseLookAtTarget = { x: 0, y: 0, z: 0 }; // 基準となる注視点
+                this.lookAroundRadius = 8; // 見回し時の視線半径（控えめに）
+                this.lastCameraRotationAngle = 0; // 前回の角度（スムーズ補間用）
+                
                 // Dynamic particle management for questioning stage
                 this.dynamicParticles = [];
                 this.lastParticleSpawn = 0;
@@ -3491,38 +4221,70 @@
                 this.emergenceDuration = 2500;       // 全パーティクル出現期間（ms）
                 this.particleEmergenceInterval = 100; // パーティクル間出現間隔（ms）
                 this.emergingParticles = [];         // 出現中パーティクルのリスト
+                
+                // 地面移動システム - セルフ・オーサーシップの人生の旅路表現
+                this.groundMovementSystem = null;   // 地面移動システム
+                this.isGroundActive = false;        // 地面システムの有効状態
             }
             
             async init(containerId) {
                 if (this.isInitialized || this.isInitializing) return;
                 this.isInitializing = true;
                 
+                console.log('🚀 3D環境初期化開始');
+                console.log('📋 システム情報:', {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    hardwareConcurrency: navigator.hardwareConcurrency,
+                    language: navigator.language
+                });
+                
                 this.container = document.getElementById(containerId);
                 if (!this.container) {
-                    console.error('コンテナが見つかりません:', containerId);
+                    console.error('❌ コンテナが見つかりません:', containerId);
                     this.showError();
                     this.isInitializing = false;
                     return;
                 }
                 
+                console.log('✅ コンテナが見つかりました:', {
+                    id: containerId,
+                    width: this.container.offsetWidth,
+                    height: this.container.offsetHeight
+                });
+                
                 // WebGLサポートの確認
+                console.log('🔍 WebGL対応をチェック中...');
                 if (!this.checkWebGLSupport()) {
-                    console.error('WebGLがサポートされていません');
+                    console.error('❌ WebGLがサポートされていません');
                     this.showError();
                     this.isInitializing = false;
                     return;
                 }
+                console.log('✅ WebGL対応を確認しました');
                 
                 this.showLoading();
                 
                 try {
+                    console.log('🎬 3Dシーン作成中...');
                     await this.createScene();
+                    console.log('✅ 3Dシーン作成完了');
+                    
+                    console.log('🎮 コントロール作成中...');
                     this.createControls();
+                    console.log('✅ コントロール作成完了');
+                    
+                    console.log('🔗 イベントバインド中...');
                     this.bindEvents();
+                    console.log('✅ イベントバインド完了');
+                    
+                    console.log('▶️ アニメーション開始...');
                     this.startAnimation();
+                    console.log('✅ アニメーション開始完了');
+                    
                     this.hideLoading();
                     this.isInitialized = true;
-                    console.log('3D環境が初期化されました');
+                    console.log('🎉 3D環境の初期化が完了しました');
                 } catch (error) {
                     console.error('3D初期化エラー:', error);
                     console.error('エラー詳細:', error.message);
@@ -3533,15 +4295,93 @@
                 }
             }
             
-            // WebGLサポートの確認
-            checkWebGLSupport() {
+            // WebGLサポートの確認（改良版）
+            isWebGLSupported() {
                 try {
                     const canvas = document.createElement('canvas');
-                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    return gl !== null;
+                    const context = canvas.getContext('webgl2') || 
+                                   canvas.getContext('webgl') || 
+                                   canvas.getContext('experimental-webgl');
+                    
+                    if (!context) {
+                        console.warn('WebGLコンテキストの作成に失敗');
+                        return false;
+                    }
+                    
+                    // 基本的なWebGL機能をテスト
+                    const renderer = context.getParameter(context.RENDERER);
+                    const vendor = context.getParameter(context.VENDOR);
+                    
+                    console.log('WebGL情報:', { renderer, vendor });
+                    
+                    // ソフトウェアレンダリングの検出
+                    if (renderer && (
+                        renderer.toLowerCase().includes('software') ||
+                        renderer.toLowerCase().includes('llvmpipe') ||
+                        renderer.toLowerCase().includes('mesa')
+                    )) {
+                        console.warn('ソフトウェアレンダリングが検出されました');
+                    }
+                    
+                    return true;
                 } catch (e) {
+                    console.error('WebGL対応チェックエラー:', e);
                     return false;
                 }
+            }
+            
+            // WebGLレンダラーの作成（フォールバック対応）
+            createWebGLRenderer() {
+                const rendererOptions = [
+                    // 最高品質設定
+                    { 
+                        antialias: true, 
+                        alpha: false, 
+                        powerPreference: 'high-performance',
+                        precision: 'highp'
+                    },
+                    // 中品質設定
+                    { 
+                        antialias: true, 
+                        alpha: false, 
+                        powerPreference: 'default'
+                    },
+                    // 低品質設定
+                    { 
+                        antialias: false, 
+                        alpha: false, 
+                        powerPreference: 'low-power'
+                    },
+                    // 最小設定
+                    { 
+                        antialias: false
+                    }
+                ];
+                
+                for (let i = 0; i < rendererOptions.length; i++) {
+                    try {
+                        console.log(`WebGLレンダラー作成試行 ${i + 1}/${rendererOptions.length}`, rendererOptions[i]);
+                        const renderer = new THREE.WebGLRenderer(rendererOptions[i]);
+                        
+                        // レンダラーのテスト
+                        const context = renderer.getContext();
+                        if (context) {
+                            console.log('WebGLレンダラーが正常に作成されました');
+                            return renderer;
+                        }
+                    } catch (e) {
+                        console.warn(`レンダラー作成失敗 (試行 ${i + 1}):`, e);
+                        continue;
+                    }
+                }
+                
+                console.error('すべてのWebGLレンダラー作成オプションが失敗しました');
+                return null;
+            }
+
+            // WebGLサポートの確認（旧版 - 互換性のため残す）
+            checkWebGLSupport() {
+                return this.isWebGLSupported();
             }
 
             showLoading() {
@@ -3559,30 +4399,192 @@
             showError() {
                 const loading = document.getElementById('refined-3d-loading');
                 if (loading) {
+                    // WebGL診断情報を取得
+                    const diagnostics = this.getWebGLDiagnostics();
+                    
                     loading.innerHTML = `
-                        <div style="text-align: center; color: #ff6b6b;">
-                            <h4>3D表示エラー</h4>
+                        <div style="text-align: center; color: #ff6b6b; max-width: 700px; margin: 0 auto;">
+                            <h4>🚫 3D表示エラー</h4>
                             <p>3D表示の初期化に失敗しました。</p>
-                            <p>以下を確認してください：</p>
-                            <ul style="text-align: left; max-width: 400px; margin: 0 auto;">
-                                <li>ブラウザがWebGLをサポートしているか</li>
-                                <li>ハードウェアアクセラレーションが有効か</li>
-                                <li>ブラウザが最新版か</li>
-                            </ul>
-                            <p style="margin-top: 15px;">
-                                <button onclick="location.reload()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                    再読み込み
+                            
+                            <div style="background: #1a1a1a; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left;">
+                                <h5 style="color: #ffd700; margin-top: 0;">🔍 診断情報</h5>
+                                <ul style="color: #ccc; line-height: 1.6; font-size: 13px;">
+                                    <li><strong>WebGL対応:</strong> ${diagnostics.webglSupported ? '✅ 対応' : '❌ 非対応'}</li>
+                                    ${diagnostics.webglVersion ? `<li><strong>WebGLバージョン:</strong> ${diagnostics.webglVersion}</li>` : ''}
+                                    <li><strong>ハードウェアアクセラレーション:</strong> ${diagnostics.hardwareAccelerated ? '✅ 有効' : '⚠️ 無効の可能性'}</li>
+                                    <li><strong>レンダラー:</strong> ${diagnostics.renderer || '不明'}</li>
+                                    <li><strong>ベンダー:</strong> ${diagnostics.vendor || '不明'}</li>
+                                    ${diagnostics.maxTextureSize ? `<li><strong>最大テクスチャサイズ:</strong> ${diagnostics.maxTextureSize}px</li>` : ''}
+                                    <li><strong>対応拡張機能:</strong> ${diagnostics.extensions.length}個</li>
+                                    <li><strong>ブラウザ:</strong> ${this.getBrowserInfo()}</li>
+                                    ${diagnostics.errors.length > 0 ? `<li style="color: #ff6b6b;"><strong>エラー:</strong><br>${diagnostics.errors.join('<br>')}</li>` : ''}
+                                </ul>
+                            </div>
+                            
+                            <div style="background: #2a1a1a; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left;">
+                                <h5 style="color: #ffd700; margin-top: 0;">💡 よくある原因と解決方法</h5>
+                                <div style="color: #ccc; line-height: 1.6; font-size: 13px;">
+                                    <h6 style="color: #4ecdc4; margin: 10px 0 5px 0;">🔄 すぐに試せる方法:</h6>
+                                    <ol>
+                                        <li><strong>ブラウザの完全再起動</strong> (全てのタブを閉じて再起動)</li>
+                                        <li><strong>シークレット/プライベートモード</strong>で試行</li>
+                                        <li><strong>他のGPU集約的アプリ</strong>を終了</li>
+                                        <li><strong>ブラウザのキャッシュをクリア</strong></li>
+                                    </ol>
+                                    
+                                    <h6 style="color: #4ecdc4; margin: 15px 0 5px 0;">⚙️ 設定の確認:</h6>
+                                    <ol start="5">
+                                        <li><strong>Chrome:</strong> chrome://settings/system → ハードウェアアクセラレーション有効</li>
+                                        <li><strong>Firefox:</strong> about:config → webgl.disabled = false</li>
+                                        <li><strong>Safari:</strong> 開発メニュー → WebGLを有効にする</li>
+                                    </ol>
+                                    
+                                    <h6 style="color: #4ecdc4; margin: 15px 0 5px 0;">🛠️ システム関連:</h6>
+                                    <ol start="8">
+                                        <li><strong>グラフィックドライバー</strong>を最新版に更新</li>
+                                        <li><strong>OS の更新</strong>を確認</li>
+                                        <li><strong>別のブラウザ</strong>で試行 (Chrome推奨)</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 20px;">
+                                <button onclick="location.reload()" style="padding: 12px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; font-size: 14px;">
+                                    🔄 再読み込み
                                 </button>
-                            </p>
+                                <button onclick="window.open('https://get.webgl.org/', '_blank')" style="padding: 12px 24px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; font-size: 14px;">
+                                    🔗 WebGLテスト
+                                </button>
+                                <button onclick="navigator.clipboard?.writeText(JSON.stringify(${JSON.stringify(diagnostics)}, null, 2))" style="padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                                    📋 診断情報コピー
+                                </button>
+                            </div>
+                            
+                            <div style="margin-top: 15px; font-size: 12px; color: #888;">
+                                💡 問題が解決しない場合は、診断情報をコピーして技術サポートにお問い合わせください
+                            </div>
                         </div>
                     `;
                 }
+            }
+            
+            // ブラウザ情報を取得
+            getBrowserInfo() {
+                const ua = navigator.userAgent;
+                if (ua.includes('Chrome') && !ua.includes('Edg')) {
+                    return 'Chrome';
+                } else if (ua.includes('Firefox')) {
+                    return 'Firefox';
+                } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+                    return 'Safari';
+                } else if (ua.includes('Edg')) {
+                    return 'Edge';
+                } else {
+                    return 'その他';
+                }
+            }
+            
+            // WebGL診断情報を取得（拡張版）
+            getWebGLDiagnostics() {
+                const diagnostics = {
+                    webglSupported: false,
+                    hardwareAccelerated: false,
+                    renderer: null,
+                    vendor: null,
+                    userAgent: navigator.userAgent,
+                    webglVersion: null,
+                    maxTextureSize: null,
+                    maxRenderBufferSize: null,
+                    extensions: [],
+                    errors: []
+                };
+                
+                try {
+                    const canvas = document.createElement('canvas');
+                    let gl = null;
+                    
+                    // WebGL2を試行
+                    try {
+                        gl = canvas.getContext('webgl2');
+                        if (gl) {
+                            diagnostics.webglVersion = 'WebGL 2.0';
+                            diagnostics.webglSupported = true;
+                        }
+                    } catch (e) {
+                        diagnostics.errors.push('WebGL2作成エラー: ' + e.message);
+                    }
+                    
+                    // WebGL2が失敗した場合、WebGL1を試行
+                    if (!gl) {
+                        try {
+                            gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                            if (gl) {
+                                diagnostics.webglVersion = 'WebGL 1.0';
+                                diagnostics.webglSupported = true;
+                            }
+                        } catch (e) {
+                            diagnostics.errors.push('WebGL1作成エラー: ' + e.message);
+                        }
+                    }
+                    
+                    if (gl) {
+                        try {
+                            // 基本情報を取得
+                            diagnostics.renderer = gl.getParameter(gl.RENDERER);
+                            diagnostics.vendor = gl.getParameter(gl.VENDOR);
+                            diagnostics.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+                            diagnostics.maxRenderBufferSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+                            
+                            // 拡張機能一覧を取得
+                            const extensions = gl.getSupportedExtensions();
+                            diagnostics.extensions = extensions || [];
+                            
+                            // ハードウェアアクセラレーションの推定
+                            const renderer = diagnostics.renderer?.toLowerCase() || '';
+                            diagnostics.hardwareAccelerated = !(
+                                renderer.includes('software') ||
+                                renderer.includes('llvmpipe') ||
+                                renderer.includes('mesa') ||
+                                renderer.includes('swiftshader') ||
+                                renderer.includes('microsoft basic render driver')
+                            );
+                            
+                            // デバッグ情報をコンソールに出力
+                            console.log('🔍 詳細WebGL診断情報:', {
+                                version: diagnostics.webglVersion,
+                                renderer: diagnostics.renderer,
+                                vendor: diagnostics.vendor,
+                                maxTextureSize: diagnostics.maxTextureSize,
+                                maxRenderBufferSize: diagnostics.maxRenderBufferSize,
+                                extensionsCount: diagnostics.extensions.length,
+                                hardwareAccelerated: diagnostics.hardwareAccelerated
+                            });
+                            
+                        } catch (e) {
+                            diagnostics.errors.push('WebGL情報取得エラー: ' + e.message);
+                        }
+                    } else {
+                        diagnostics.errors.push('WebGLコンテキストの作成に失敗');
+                    }
+                    
+                } catch (e) {
+                    diagnostics.errors.push('WebGL診断エラー: ' + e.message);
+                    console.error('WebGL診断エラー:', e);
+                }
+                
+                return diagnostics;
             }
             
             async createScene() {
                 return new Promise((resolve, reject) => {
                     setTimeout(() => {
                         try {
+                            // WebGL対応チェック
+                            if (!this.isWebGLSupported()) {
+                                throw new Error('WebGL is not supported');
+                            }
+                            
                             // Create Three.js scene
                             this.scene = new THREE.Scene();
                             this.scene.background = new THREE.Color(0x0a0a0a);
@@ -3592,8 +4594,12 @@
                             this.camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
                             this.camera.position.set(0, 0, this.defaultCameraZ);
                             
-                            // Create renderer
-                            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                            // Create renderer with fallback options
+                            this.renderer = this.createWebGLRenderer();
+                            if (!this.renderer) {
+                                throw new Error('Failed to create WebGL renderer');
+                            }
+                            
                             this.renderer.setSize(this.container.offsetWidth, this.container.offsetHeight);
                             this.renderer.setClearColor(0x0a0a0a);
                             
@@ -3601,6 +4607,8 @@
                             const sceneElement = document.getElementById('refined-3d-scene');
                             if (sceneElement) {
                                 sceneElement.appendChild(this.renderer.domElement);
+                            } else {
+                                throw new Error('Scene container not found');
                             }
                             
                             // Create basic 3D content
@@ -3646,6 +4654,9 @@
                 
                 // Initialize new dimension effect systems
                 this.initializeDimensionEffects();
+                
+                // Initialize ground movement system
+                this.initializeGroundSystem();
                 
                 // 説明表示システムの初期化
                 this.initializeExplanationSystem();
@@ -3705,6 +4716,28 @@
                 }
             }
             
+            // 地面システムの初期化
+            initializeGroundSystem() {
+                if (this.groundMovementSystem) {
+                    this.groundMovementSystem.cleanup();
+                }
+                
+                // 地面移動システムを作成
+                this.groundMovementSystem = new GroundMovementSystem(this.scene, this.camera);
+                
+                // 地面ドットを初期化
+                this.groundMovementSystem.initializeGroundDots();
+                
+                // 現在の段階に応じた動作パターンを設定
+                this.groundMovementSystem.setMovementPattern(this.currentStage);
+                
+                // 地面システムを有効化（デフォルトで表示）
+                this.groundMovementSystem.setActive(true);
+                this.isGroundActive = true;
+                
+                console.log('[3D] Ground movement system initialized for stage:', this.currentStage);
+            }
+            
             // 次元効果アニメーションの更新
             updateDimensionAnimations(time) {
                 const stageNumber = this.getStageNumber(this.currentStage);
@@ -3724,6 +4757,14 @@
                 if (this.beamDimension) {
                     this.beamDimension.update(time, stageNumber);
                 }
+                
+                // 地面移動システムの更新
+                if (this.groundMovementSystem && this.isGroundActive) {
+                    this.groundMovementSystem.updateGroundMovement();
+                }
+                
+                // カメラの見回し効果を更新
+                this.updateCameraLookAround();
             }
             
             createDimensionRings() {
@@ -5590,6 +6631,12 @@
                 // 段階的光強化システム - ステージ進行に応じて光のベールを更新
                 this.updateLightVeils(newStageId);
                 
+                // 地面移動システム - ステージ変更時の動作パターン更新
+                if (this.groundMovementSystem) {
+                    this.groundMovementSystem.setMovementPattern(newStageId);
+                    console.log('[Ground] Movement pattern updated for stage:', newStageId);
+                }
+                
                 // 説明表示システム - ステージ変更時は説明内容のみ更新（自動表示はしない）
                 if (this.explanationSystem) {
                     this.explanationSystem.updateStageExplanations(newStageId);
@@ -5921,6 +6968,107 @@
             resetView() {
                 this.camera.position.set(0, 0, this.defaultCameraZ);
                 this.camera.lookAt(0, 0, 0);
+                // カメラ回転も初期化
+                this.cameraRotationAngle = 0;
+            }
+            
+            // カメラの見回し効果を更新
+            updateCameraLookAround() {
+                // 地面移動システムがアクティブで、見回し動作が必要な場合のみ実行
+                if (!this.groundMovementSystem || !this.isGroundActive) {
+                    // スキャニング中でない場合は中央を向く
+                    if (this.cameraRotationAngle !== 0) {
+                        const resetSpeed = 0.01; // よりゆっくりと中央に戻る
+                        if (Math.abs(this.cameraRotationAngle) > resetSpeed) {
+                            this.cameraRotationAngle -= Math.sign(this.cameraRotationAngle) * resetSpeed;
+                        } else {
+                            this.cameraRotationAngle = 0;
+                        }
+                        this.camera.lookAt(0, 0, 0); // 中央に戻す
+                    }
+                    return;
+                }
+                
+                // 現在の地面移動システムから回転角度を取得
+                const targetRotationAngle = this.getCameraRotationFromGroundSystem();
+                
+                if (targetRotationAngle !== null) {
+                    // より遅い角度変化（さらにゆっくり）
+                    const maxAngleChangePerFrame = 0.003; // 約0.5度/フレーム（さらに遅く）
+                    const angleDiff = targetRotationAngle - this.cameraRotationAngle;
+                    
+                    // 角度差を -π から π の範囲に正規化
+                    let normalizedAngleDiff = angleDiff;
+                    while (normalizedAngleDiff > Math.PI) normalizedAngleDiff -= 2 * Math.PI;
+                    while (normalizedAngleDiff < -Math.PI) normalizedAngleDiff += 2 * Math.PI;
+                    
+                    // 非常に滑らかな角度更新
+                    if (Math.abs(normalizedAngleDiff) > maxAngleChangePerFrame) {
+                        this.cameraRotationAngle += Math.sign(normalizedAngleDiff) * maxAngleChangePerFrame;
+                    } else {
+                        this.cameraRotationAngle = targetRotationAngle;
+                    }
+                    
+                    // より控えめな視線移動（中央からの小さなオフセット）
+                    const lookAtX = Math.sin(this.cameraRotationAngle) * this.lookAroundRadius;
+                    const lookAtZ = Math.cos(this.cameraRotationAngle) * this.lookAroundRadius;
+                    
+                    // 基準注視点からの小さなオフセットを適用
+                    this.camera.lookAt(
+                        this.baseLookAtTarget.x + lookAtX,
+                        this.baseLookAtTarget.y,
+                        this.baseLookAtTarget.z + lookAtZ
+                    );
+                } else {
+                    // スキャニング中でない場合は中央を向く
+                    if (this.cameraRotationAngle !== 0) {
+                        const resetSpeed = 0.01; // より遅いリセット速度
+                        if (Math.abs(this.cameraRotationAngle) > resetSpeed) {
+                            this.cameraRotationAngle -= Math.sign(this.cameraRotationAngle) * resetSpeed;
+                            const lookAtX = Math.sin(this.cameraRotationAngle) * this.lookAroundRadius;
+                            const lookAtZ = Math.cos(this.cameraRotationAngle) * this.lookAroundRadius;
+                            this.camera.lookAt(lookAtX, 0, lookAtZ);
+                        } else {
+                            this.cameraRotationAngle = 0;
+                            this.camera.lookAt(0, 0, 0);
+                        }
+                    }
+                }
+            }
+            
+            // 地面移動システムから現在の回転角度を取得
+            getCameraRotationFromGroundSystem() {
+                if (!this.groundMovementSystem || !this.groundMovementSystem.behaviorState) {
+                    return null;
+                }
+                
+                const behaviorState = this.groundMovementSystem.behaviorState;
+                const currentStage = this.groundMovementSystem.currentStage;
+                
+                // Ebステージで複数権威スキャニング中の場合
+                if (currentStage === 'Eb' && 
+                    behaviorState.currentBehavior === 'pausing' && 
+                    behaviorState.shouldReflect &&
+                    this.groundMovementSystem.stageConfig?.isMultiAuthorityScanning) {
+                    
+                    // 現在のスキャニング進行度を計算
+                    const currentTime = Date.now();
+                    const timeSinceStart = currentTime - behaviorState.behaviorStartTime;
+                    const totalDuration = behaviorState.behaviorDuration;
+                    const progress = Math.min(timeSinceStart / totalDuration, 1.0);
+                    
+                    // デバッグ用：カメラ回転のログ
+                    if (progress > 0.35 && progress <= 0.65) { // 停止フェーズ中のみ
+                        const pausedProgress = (progress - 0.35) / 0.3;
+                        
+                        // 複数権威スキャニングの角度を取得
+                        const scanningAngle = this.groundMovementSystem.executeMultiAuthorityScanning(pausedProgress);
+                        console.log(`[Camera Scanning] Progress: ${pausedProgress.toFixed(3)}, Camera Angle: ${(scanningAngle * 180 / Math.PI).toFixed(1)}°`);
+                        return scanningAngle;
+                    }
+                }
+                
+                return null; // 回転不要
             }
             
             reinitialize3D() {
