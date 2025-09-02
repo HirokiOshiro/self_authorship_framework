@@ -1558,18 +1558,18 @@
                 
                 // 各段階の特徴に応じた波の強度設定
                 const intensityMap = {
-                    // EA段階: 穏やかな波（安定した環境）
+                    // Ea段階: 穏やかな波（安定した環境）
                     'Ea': { large: 0.6, medium: 0.8, small: 1.0 },
-                    // EB段階: 激しい波（葛藤と混乱）
-                    'Eb': { large: 1.2, medium: 1.4, small: 1.6 },
-                    // SA段階: やや不安定な波（自分らしさの模索）
-                    'Sa': { large: 0.9, medium: 1.1, small: 1.3 },
-                    // SB段階: 変動の大きい波（価値観の衝突）
-                    'Sb': { large: 1.1, medium: 1.3, small: 1.1 },
-                    // SAA段階: 徐々に安定する波（内なる声の確立）
-                    'SAa': { large: 0.8, medium: 1.0, small: 0.9 },
-                    // SAB段階: 複雑な波（複数の価値観の統合）
-                    'SAb': { large: 1.0, medium: 1.2, small: 1.0 },
+                    // Ec段階: 激しい波（葛藤と混乱）
+                    'Ec': { large: 1.2, medium: 1.4, small: 1.6 },
+                    // EI段階: やや不安定な波（自分らしさの模索）
+                    'EI': { large: 0.9, medium: 1.1, small: 1.3 },
+                    // E-I段階: 変動の大きい波（価値観の衝突）
+                    'E-I': { large: 1.1, medium: 1.3, small: 1.1 },
+                    // I-E段階: 徐々に安定する波（内なる声の確立）
+                    'I-E': { large: 0.8, medium: 1.0, small: 0.9 },
+                    // Ia段階: 複雑な波（複数の価値観の統合）
+                    'Ia': { large: 1.0, medium: 1.2, small: 1.0 },
                     // デフォルト
                     'default': { large: 0.8, medium: 1.0, small: 1.0 }
                 };
@@ -1675,7 +1675,18 @@
                         wanderIntensity: 1.0, // 最強の迷い
                         reflectionFrequency: 0.6,
                         reflectionAngle: Math.PI * 1.5, // 270度の振り返り
-                        behaviorTransition: 1200 // 最も頻繁な行動変化
+                        behaviorTransition: 1200, // 最も頻繁な行動変化
+                        isMultiAuthorityScanning: true, // E-Iステージでもスキャニング機能を有効
+                        authorityDirections: [
+                            { angle: Math.PI * 2/3, weight: 0.2 },   // 右前120度
+                            { angle: -Math.PI * 2/3, weight: 0.2 },  // 左前120度
+                            { angle: Math.PI/2, weight: 0.2 },       // 右横90度
+                            { angle: -Math.PI/2, weight: 0.2 },      // 左横90度
+                            { angle: Math.PI/3, weight: 0.1 },       // 右前60度
+                            { angle: -Math.PI/3, weight: 0.1 },      // 左前60度
+                            { angle: Math.PI * 5/6, weight: 0.1 },   // 右後150度
+                            { angle: -Math.PI * 5/6, weight: 0.1 }   // 左後150度
+                        ]
                     },
                     'I-E': {
                         pauseFrequency: 0.4,
@@ -2078,10 +2089,19 @@
                 const randomSeed = Math.floor(Date.now() / 8000); // 8秒ごとに新しいランダム設定
                 const rng = this.createSeededRandom(randomSeed + currentScanIndex);
                 
-                // 左右のランダム角度を生成
-                const isLeft = (currentScanIndex % 2 === 0); // 偶数は左、奇数は右
+                // より自然なランダム左右選択（シードベース）
+                const directionSeed = this.createSeededRandom(randomSeed * 7 + currentScanIndex * 3);
+                const isLeft = directionSeed() < 0.5; // 真のランダム左右選択
                 const baseAngle = isLeft ? -1 : 1; // 左は負、右は正
-                const randomAngleRange = (Math.PI / 8) + (rng() * Math.PI / 6); // 22.5度〜52.5度の範囲
+                
+                // E-Iステージはより大きな回転角度範囲を使用
+                let randomAngleRange;
+                if (this.currentStage === 'E-I') {
+                    randomAngleRange = (Math.PI / 4) + (rng() * Math.PI / 2.5); // 45度〜117度の範囲（より大きく）
+                } else {
+                    randomAngleRange = (Math.PI / 8) + (rng() * Math.PI / 6); // 22.5度〜52.5度の範囲（デフォルト）
+                }
+                
                 const targetAngle = baseAngle * randomAngleRange;
                 
                 // 非常にゆっくりとしたスムーズな移行
@@ -2119,9 +2139,19 @@
             // 前の角度を再計算（一貫性のため）
             getPreviousRandomAngle(seed) {
                 const rng = this.createSeededRandom(seed);
-                const isLeft = (seed % 2 === 0);
+                // より自然なランダム左右選択（シードベース）
+                const directionSeed = this.createSeededRandom(seed * 7);
+                const isLeft = directionSeed() < 0.5; // 真のランダム左右選択
                 const baseAngle = isLeft ? -1 : 1;
-                const randomAngleRange = (Math.PI / 8) + (rng() * Math.PI / 6);
+                
+                // E-Iステージはより大きな回転角度範囲を使用
+                let randomAngleRange;
+                if (this.currentStage === 'E-I') {
+                    randomAngleRange = (Math.PI / 4) + (rng() * Math.PI / 2.5); // 45度〜117度の範囲（より大きく）
+                } else {
+                    randomAngleRange = (Math.PI / 8) + (rng() * Math.PI / 6); // 22.5度〜52.5度の範囲（デフォルト）
+                }
+                
                 return baseAngle * randomAngleRange;
             }
             
@@ -6978,7 +7008,7 @@
                 if (!this.groundMovementSystem || !this.isGroundActive) {
                     // スキャニング中でない場合は中央を向く
                     if (this.cameraRotationAngle !== 0) {
-                        const resetSpeed = 0.01; // よりゆっくりと中央に戻る
+                        const resetSpeed = 0.001; // さらにゆっくりと中央に戻る
                         if (Math.abs(this.cameraRotationAngle) > resetSpeed) {
                             this.cameraRotationAngle -= Math.sign(this.cameraRotationAngle) * resetSpeed;
                         } else {
@@ -6994,7 +7024,7 @@
                 
                 if (targetRotationAngle !== null) {
                     // より遅い角度変化（さらにゆっくり）
-                    const maxAngleChangePerFrame = 0.003; // 約0.5度/フレーム（さらに遅く）
+                    const maxAngleChangePerFrame = 0.001; // 約0.5度/フレーム（さらに遅く）
                     const angleDiff = targetRotationAngle - this.cameraRotationAngle;
                     
                     // 角度差を -π から π の範囲に正規化
@@ -7022,7 +7052,7 @@
                 } else {
                     // スキャニング中でない場合は中央を向く
                     if (this.cameraRotationAngle !== 0) {
-                        const resetSpeed = 0.01; // より遅いリセット速度
+                        const resetSpeed = 0.001; // さらに遅いリセット速度
                         if (Math.abs(this.cameraRotationAngle) > resetSpeed) {
                             this.cameraRotationAngle -= Math.sign(this.cameraRotationAngle) * resetSpeed;
                             const lookAtX = Math.sin(this.cameraRotationAngle) * this.lookAroundRadius;
@@ -7045,8 +7075,8 @@
                 const behaviorState = this.groundMovementSystem.behaviorState;
                 const currentStage = this.groundMovementSystem.currentStage;
                 
-                // Ebステージで複数権威スキャニング中の場合
-                if (currentStage === 'Eb' && 
+                // EbステージまたはE-Iステージで複数権威スキャニング中の場合
+                if ((currentStage === 'Eb' || currentStage === 'E-I') && 
                     behaviorState.currentBehavior === 'pausing' && 
                     behaviorState.shouldReflect &&
                     this.groundMovementSystem.stageConfig?.isMultiAuthorityScanning) {
@@ -7063,7 +7093,7 @@
                         
                         // 複数権威スキャニングの角度を取得
                         const scanningAngle = this.groundMovementSystem.executeMultiAuthorityScanning(pausedProgress);
-                        console.log(`[Camera Scanning] Progress: ${pausedProgress.toFixed(3)}, Camera Angle: ${(scanningAngle * 180 / Math.PI).toFixed(1)}°`);
+                        console.log(`[Camera Scanning - ${currentStage}] Progress: ${pausedProgress.toFixed(3)}, Camera Angle: ${(scanningAngle * 180 / Math.PI).toFixed(1)}°`);
                         return scanningAngle;
                     }
                 }
