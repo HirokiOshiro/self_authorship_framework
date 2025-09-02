@@ -2479,6 +2479,7 @@
                 this.maxConcurrentStars = 2; // 同時流れ星数
                 this.tailLength = 0.8; // 流れ星の尻尾の長さ
                 this.trailFadeTime = 1500; // 残像のフェード時間（ms）
+                this.maxTrailLifetime = 2500; // 残像の最大寿命（強制削除用）
             }
             
             // 直線パス生成（ギザギザなし）
@@ -2486,6 +2487,48 @@
                 const start = startParticle.position.clone();
                 const end = endParticle.position.clone();
                 return [start, end];
+            }
+            
+            // waypoints（経由点）の有効性を検証
+            validateWaypoints(star) {
+                try {
+                    if (!star.waypoints || star.waypoints.length < 2) {
+                        console.warn('[LightningSystem] Invalid waypoints: insufficient points');
+                        return false;
+                    }
+                    
+                    return star.waypoints.every((particle, index) => {
+                        // パーティクルの基本的な存在チェック
+                        if (!particle || !particle.position) {
+                            console.warn(`[LightningSystem] Invalid particle at waypoint ${index}: missing position`);
+                            return false;
+                        }
+                        
+                        // 可視性チェック
+                        if (!particle.visible) {
+                            console.warn(`[LightningSystem] Particle at waypoint ${index} became invisible`);
+                            return false;
+                        }
+                        
+                        // シーンから除去されていないかチェック
+                        if (!particle.parent) {
+                            console.warn(`[LightningSystem] Particle at waypoint ${index} was removed from scene`);
+                            return false;
+                        }
+                        
+                        // 異常な位置変更をチェック（原点付近への強制移動）
+                        const distanceFromOrigin = particle.position.length();
+                        if (distanceFromOrigin < 0.1) {
+                            console.warn(`[LightningSystem] Particle at waypoint ${index} moved to origin (distance: ${distanceFromOrigin})`);
+                            return false;
+                        }
+                        
+                        return true;
+                    });
+                } catch (error) {
+                    console.error('[LightningSystem] Error validating waypoints:', error);
+                    return false;
+                }
             }
             
             // 流れ星クラス（イーズイン/アウトと残像効果付き）
@@ -2622,6 +2665,13 @@
             // 流れ星の移動アニメーション更新
             updateShootingStars(deltaTime) {
                 this.activeShootingStars = this.activeShootingStars.filter(star => {
+                    // Phase 2: waypoint検証による早期終了
+                    if (!this.validateWaypoints(star)) {
+                        console.log('[LightningSystem] Terminating shooting star due to invalid waypoints');
+                        this.cleanupShootingStar(star);
+                        return false;
+                    }
+                    
                     const age = Date.now() - star.creationTime;
                     const normalizedAge = age / star.duration;
                     
@@ -2884,14 +2934,52 @@
                 const currentTime = Date.now();
                 
                 this.trailSegments = this.trailSegments.filter(segment => {
-                    const age = currentTime - segment.creationTime;
-                    const fadeProgress = age / this.trailFadeTime;
-                    
-                    if (fadeProgress >= 1.0) {
-                        // フェード完了、確実に除去
-                        if (segment.line && segment.line.parent) {
+                    try {
+                        const age = currentTime - segment.creationTime;
+                        const fadeProgress = age / this.trailFadeTime;
+                        
+                        // Phase 3: 最大寿命による強制削除
+                        if (age >= this.maxTrailLifetime) {
+                            console.log('[LightningSystem] Force removing trail segment due to max lifetime exceeded');
+                            this.forceRemoveTrailSegment(segment);
+                            return false;
+                        }
+                        
+                        if (fadeProgress >= 1.0) {
+                            // フェード完了、確実に除去
+                            this.forceRemoveTrailSegment(segment);
+                            return false;
+                        }
+                        
+                        // フェードアウト効果（両方のマテリアルタイプに対応）
+                        const fadedOpacity = segment.originalOpacity * (1 - fadeProgress);
+                        const material = segment.line.material;
+                        
+                        if (material && material.uniforms && material.uniforms.opacity) {
+                            // ShaderMaterialの場合
+                            material.uniforms.opacity.value = fadedOpacity;
+                        } else if (material && material.opacity !== undefined) {
+                            // BasicMaterialなどの場合
+                            material.opacity = fadedOpacity;
+                        }
+                        
+                        return true;
+                    } catch (error) {
+                        console.error('[LightningSystem] Error updating trail segment:', error);
+                        this.forceRemoveTrailSegment(segment);
+                        return false;
+                    }
+                });
+            }
+            
+            // Phase 3: 残像セグメントの強制削除（エラーハンドリング付き）
+            forceRemoveTrailSegment(segment) {
+                try {
+                    if (segment.line) {
+                        // シーンから確実に除去
+                        if (segment.line.parent) {
                             segment.line.parent.remove(segment.line);
-                        } else if (segment.line) {
+                        } else {
                             this.scene.remove(segment.line);
                         }
                         
@@ -2911,23 +2999,12 @@
                             segment.line.material.dispose();
                         }
                         segment.line = null;
-                        return false;
                     }
-                    
-                    // フェードアウト効果（両方のマテリアルタイプに対応）
-                    const fadedOpacity = segment.originalOpacity * (1 - fadeProgress);
-                    const material = segment.line.material;
-                    
-                    if (material.uniforms && material.uniforms.opacity) {
-                        // ShaderMaterialの場合
-                        material.uniforms.opacity.value = fadedOpacity;
-                    } else if (material.opacity !== undefined) {
-                        // BasicMaterialなどの場合
-                        material.opacity = fadedOpacity;
-                    }
-                    
-                    return true;
-                });
+                } catch (error) {
+                    console.error('[LightningSystem] Error in forceRemoveTrailSegment:', error);
+                    // エラーが発生してもnullに設定して参照を切る
+                    segment.line = null;
+                }
             }
             
             // 流れ星のクリーンアップ
@@ -3021,18 +3098,46 @@
             }
             
             update(stageNumber) {
-                const now = Date.now();
-                const intensity = this.getLightningIntensity(stageNumber);
-                
-                // 新しい流れ星の生成タイミング制御
-                if (now - this.lastUpdate > intensity.frequency) {
-                    this.createShootingStars(stageNumber);
-                    this.lastUpdate = now;
+                try {
+                    const now = Date.now();
+                    const intensity = this.getLightningIntensity(stageNumber);
+                    
+                    // Phase 4: 状態の健全性チェック
+                    if (this.activeShootingStars.length > this.maxConcurrentStars * 2) {
+                        console.warn(`[LightningSystem] Too many active shooting stars (${this.activeShootingStars.length}), clearing excess`);
+                        // 古い流れ星から優先的に削除
+                        this.activeShootingStars.sort((a, b) => a.creationTime - b.creationTime);
+                        const excess = this.activeShootingStars.splice(this.maxConcurrentStars);
+                        excess.forEach(star => this.cleanupShootingStar(star));
+                    }
+                    
+                    if (this.trailSegments.length > 20) {
+                        console.warn(`[LightningSystem] Too many trail segments (${this.trailSegments.length}), forcing cleanup`);
+                        // 古い残像から優先的に削除
+                        this.trailSegments.sort((a, b) => a.creationTime - b.creationTime);
+                        const excess = this.trailSegments.splice(10);
+                        excess.forEach(segment => this.forceRemoveTrailSegment(segment));
+                    }
+                    
+                    // 新しい流れ星の生成タイミング制御
+                    if (now - this.lastUpdate > intensity.frequency) {
+                        this.createShootingStars(stageNumber);
+                        this.lastUpdate = now;
+                    }
+                    
+                    // 流れ星のアニメーション更新
+                    const deltaTime = 0.016; // 約60FPS想定
+                    this.updateShootingStars(deltaTime);
+                    
+                } catch (error) {
+                    console.error('[LightningSystem] Critical error in update:', error);
+                    // 緊急時のクリーンアップ
+                    try {
+                        this.clearActiveLightning();
+                    } catch (cleanupError) {
+                        console.error('[LightningSystem] Error during emergency cleanup:', cleanupError);
+                    }
                 }
-                
-                // 流れ星のアニメーション更新
-                const deltaTime = 0.016; // 約60FPS想定
-                this.updateShootingStars(deltaTime);
             }
             
             cleanup() {
@@ -4214,8 +4319,8 @@
                 this.stageConnectionLimits = {
                     'IE': 3,      // IEステージ：内なる声を育む段階 - 少ない接続
                     'Ia': 8,      // Iaステージ：過去の意味づけ段階 - 基礎的な接続
-                    'Ib': 12,      // Ibステージ：統合の基盤段階 - 中程度の接続
-                    'Ic': 24      // Icステージ：発見と気づき段階 - 極めて豊富な接続（広範囲な経験統合・完全なコミットメント）
+                    'Ib': 18,      // Ibステージ：統合の基盤段階 - 中程度の接続
+                    'Ic': 32      // Icステージ：発見と気づき段階 - 極めて豊富な接続（広範囲な経験統合・完全なコミットメント）
                 };
                 
                 // Zoom controls
