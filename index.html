@@ -1062,8 +1062,9 @@
                         </div>
                         <div class="sa-3d-controls" id="refined-3d-controls" style="display: none;">
                             <div class="stage-info-display" id="stage-info-display">
-                                <h5 id="current-stage-title">Ea: 外的権威を信頼する</h5>
-                                <p id="current-stage-description">混沌とした状態から成長が始まります</p>
+                                <!-- titleElement を一時的に非表示化（重複表示回避のため） -->
+                                <!-- <h5 id="current-stage-title">Ea: 外的権威を信頼する</h5> -->
+                                <p id="current-stage-description">外的権威を信頼</p>
                             </div>
                             <div class="stage-controls">
                                 <button data-stage="Ea" class="stage-btn active">Ea</button>
@@ -4356,6 +4357,8 @@
                 this.emergenceDuration = 2500;       // 全パーティクル出現期間（ms）
                 this.particleEmergenceInterval = 100; // パーティクル間出現間隔（ms）
                 this.emergingParticles = [];         // 出現中パーティクルのリスト
+                this.emergenceTransitionStarted = false; // 出現アニメーション遷移開始フラグ
+                this.emergenceTransitionTime = 0;    // 遷移開始時刻
                 
                 // 地面移動システム - セルフ・オーサーシップの人生の旅路表現
                 this.groundMovementSystem = null;   // 地面移動システム
@@ -6830,6 +6833,8 @@
                 this.isEmergingIE = true;
                 this.emergenceStartTime = Date.now() + this.emergenceDelay;
                 this.emergingParticles = [];
+                this.emergenceTransitionStarted = false; // 遷移フラグをリセット
+                this.emergenceTransitionTime = 0;        // 遷移時刻をリセット
                 
                 // 全パーティクルを出現待ちリストに追加（シャッフルして自然な順序に）
                 const particleIndices = this.particles.map((_, index) => index);
@@ -7078,25 +7083,34 @@
                 const titleElement = document.getElementById('current-stage-title');
                 const descElement = document.getElementById('current-stage-description');
                 
-                if (titleElement && descElement) {
-                    titleElement.textContent = `${stageId}: ${stageData.description}`;
+                // titleElementが存在しない場合でも、descElementがあれば処理を続行
+                if (descElement) {
+                    // titleElement を一時的に非表示化（重複表示回避のため）
+                    // if (titleElement) {
+                    //     titleElement.textContent = `${stageId}: ${stageData.description}`;
+                    // }
                     
+                    // behaviorDescriptions を一時的に非表示化（将来的に戻す可能性のため保持）
+                    /*
                     // 段階に応じた詳細説明
                     const behaviorDescriptions = {
-                        'chaotic': '混沌とした状態から成長が始まります',
-                        'conflicted': '内面に対立する力が働いています',
-                        'questioning': '疑問と気づきが生まれています',
-                        'questioning_emergence': '疑問により様々な経験が思い浮かび、大切なものは心に残り続けます',
-                        'searching': '新しい可能性を探索しています',
-                        'building': '内なる基盤を構築しています',
-                        'listening': '内なる声に耳を傾けています',
-                        'nurturing': '自己の成長を育んでいます',
-                        'trusting': '内なる声を信頼し始めています',
-                        'foundation': '確固とした基盤を築いています',
-                        'committed': '基盤の上で波のように躍動しながら完全なコミットメントを実現しています'
+                        'chaotic': 'あまり疑問に感じたりすることは少ない',
+                        'conflicted': '今までの考え方や方法でうまくいかない出来事に遭遇',
+                        'questioning': '当たり前と思っていたことに対するふとした疑問',
+                        'questioning_emergence': 'このままでいいのか、本当に大丈夫だろうか',
+                        'building': '自分の好きなことや心に残っている経験は何か',
+                        'listening': '自分の心の動きに落ち着いて耳を傾ける',
+                        'nurturing': '自分の気持ちや経験と周囲の状況を意味づける',
+                        'trusting': '自分が本当に大切にしたいことの輪郭を掴む',
+                        'foundation': '周りの人の声に耳を傾け、自分の考えを自分の言葉で話す',
+                        'committed': '進みたい道、貢献したいものごとに向かう'
                     };
                     
                     descElement.textContent = behaviorDescriptions[stageData.behavior] || stageData.description;
+                    */
+                    
+                    // stageData.description のみを表示（重複回避）
+                    descElement.textContent = stageData.description;
                 }
             }
             
@@ -7553,30 +7567,31 @@
                             const basePos = particle.userData.originalPosition;
                             const distance = basePos.length();
                             
-                            // 現在の位置からパルス値を逆算して時間オフセットを設定
+                            // 現在の位置からより正確な時間オフセットを計算
                             const currentDistance = particle.position.length();
-                            const currentPulse = currentDistance / distance;
+                            const currentPulse = Math.max(0.85, Math.min(1.0, currentDistance / distance));
                             
-                            // 現在のパルス値に対応する時間オフセットを計算
-                            let targetPulse = Math.max(0.85, Math.min(1.0, currentPulse)); // 0.85-1.0の範囲に制限
-                            let normalizedPulse = (targetPulse - 0.925) / 0.075; // -1から1の範囲に正規化
-                            normalizedPulse = Math.max(-1, Math.min(1, normalizedPulse)); // 範囲を確実に制限
+                            // 正規化（-1から1の範囲）
+                            const normalizedPulse = Math.max(-1, Math.min(1, (currentPulse - 0.925) / 0.075));
                             
-                            const currentPhase = Math.asin(normalizedPulse);
-                            particle.userData.pulseTimeOffset = currentPhase - (Date.now() * 0.001) * 1.2;
+                            // より安全な位相計算（Math.asinの代わりにMath.atan2を使用）
+                            const currentPhase = Math.atan2(normalizedPulse, Math.sqrt(Math.max(0, 1 - normalizedPulse * normalizedPulse)));
+                            const currentTime = Date.now() * 0.001;
+                            particle.userData.pulseTimeOffset = currentPhase - currentTime * 1.2;
                             
-                            // パルス動作と同じ計算式を使用して位置を微調整
-                            const initialPulse = Math.sin((Date.now() * 0.001) * 1.2 + particle.userData.pulseTimeOffset) * 0.075 + 0.925;
+                            // パルス動作と同じ計算式を使用して位置を微調整（滑らかな接続）
+                            const initialPulse = Math.sin(currentTime * 1.2 + particle.userData.pulseTimeOffset) * 0.075 + 0.925;
                             const direction = basePos.clone().normalize();
                             const pulsedDistance = distance * initialPulse;
                             
-                            particle.position.copy(direction);
-                            particle.position.multiplyScalar(pulsedDistance);
+                            // 現在位置から目標位置への滑らかな補間（急激な変化を防ぐ）
+                            const targetPosition = direction.multiplyScalar(pulsedDistance);
+                            particle.position.lerp(targetPosition, 0.3); // 30%の重みで補間
                             
                             // 通常の動作に移行するため、初期設定をリセット
-                            particle.material.opacity = 0.9;
-                            particle.scale.setScalar(1);
-                            particle.rotation.z = 0;
+                            particle.material.opacity = Math.min(0.9, particle.material.opacity + 0.1);
+                            particle.scale.setScalar(Math.min(1.0, particle.scale.x + 0.1));
+                            particle.rotation.z *= 0.7; // 回転を徐々に減衰
                         } else {
                             allEmerged = false;
                         }
@@ -7585,37 +7600,41 @@
                 
                 // 全パーティクルの出現完了
                 if (allEmerged) {
-                    this.isEmergingIE = false;
-                    console.log('I-E Emergence animation completed - transitioning to pulse behavior');
+                    // 段階的にフラグを切り替える（即座に切り替えない）
+                    if (!this.emergenceTransitionStarted) {
+                        this.emergenceTransitionStarted = true;
+                        this.emergenceTransitionTime = Date.now();
+                        console.log('I-E Emergence animation nearing completion - starting transition phase');
+                    }
                     
-                    // 全てのパーティクルのパターンを確実にpulseに設定
-                    this.particles.children.forEach(particle => {
-                        particle.userData.pattern = 'pulse';
-                        particle.userData.cohesion = 0.2;
-                        particle.userData.behavior = 'contemplative';
-                    });
-                    
-                    console.log('I-E particles reset to pulse pattern - total particles:', this.particles.children.length);
-                    
-                    // 通常のpulseパターンに移行するため、出現アニメーションの一時的効果のみリセット
-                    this.particles.forEach(particle => {
-                        if (particle.userData) {
-                            // originalPositionは既に適切に設定済みなので更新しない
-                            
-                            // 出現アニメーションの一時的な効果をリセット
-                            particle.material.opacity = 0.9;
-                            particle.scale.setScalar(1);
-                            particle.rotation.z = 0;
-                            particle.visible = true;
-                            
-                            // I-Eステージの設定を確実に適用
-                            const stageData = this.getStageData('I-E');
-                            particle.material.color.setHex(stageData.color);
-                            particle.userData.pattern = 'pulse'; // 明示的にpulseパターンに設定
-                            particle.userData.behavior = 'listening';
-                            particle.userData.cohesion = 0.1; // 低い凝集力
-                        }
-                    });
+                    // 遷移期間（500ms）経過後にフラグを切り替え
+                    const transitionDuration = 500;
+                    if (Date.now() - this.emergenceTransitionTime > transitionDuration) {
+                        this.isEmergingIE = false;
+                        this.emergenceTransitionStarted = false;
+                        console.log('I-E Emergence animation completed - fully transitioned to pulse behavior');
+                        
+                        // 全てのパーティクルのパターンを確実にpulseに設定
+                        this.particles.children.forEach(particle => {
+                            if (particle.userData) {
+                                particle.userData.pattern = 'pulse';
+                                particle.userData.cohesion = 0.1;
+                                particle.userData.behavior = 'listening';
+                            }
+                        });
+                        
+                        console.log('I-E particles reset to pulse pattern - total particles:', this.particles.children.length);
+                        
+                        // 通常のpulseパターンに移行するため、出現アニメーションの一時的効果のみリセット
+                        this.particles.forEach(particle => {
+                            if (particle.userData) {
+                                // 最終的な属性を確実に設定
+                                particle.material.opacity = Math.min(0.9, particle.material.opacity);
+                                particle.scale.setScalar(1.0);
+                                particle.rotation.z = 0;
+                            }
+                        });
+                    }
                 }
             }
             
@@ -7881,23 +7900,45 @@
             animatePulseBehavior(particle, index, time) {
                 // I-E: 脈動 - 内なる声を聴く（つかず離れずの状態）
                 
-                // 出現アニメーション中は通常のpulse動作をスキップ
-                if (this.isEmergingIE) {
-                    return;
-                }
-                
                 const basePos = particle.userData.originalPosition;
                 if (!basePos) return; // originalPositionが設定されていない場合はスキップ
                 
+                // 出現アニメーション中でも、段階的にパルス動作に移行する
+                let transitionFactor = 1.0; // 通常時は完全なパルス動作
+                let shouldBlendWithEmergence = false;
+                
+                if (this.isEmergingIE && this.emergingParticles) {
+                    const emergenceData = this.emergingParticles.find(data => data.particleIndex === index);
+                    if (emergenceData && emergenceData.emergenceProgress > 0.7) {
+                        // 出現アニメーションが70%完了したら段階的にパルス動作を開始
+                        transitionFactor = (emergenceData.emergenceProgress - 0.7) / 0.3; // 0.7-1.0を0-1にマップ
+                        shouldBlendWithEmergence = true;
+                    } else if (emergenceData && emergenceData.emergenceProgress <= 0.7) {
+                        // まだ出現アニメーション主導期間
+                        return;
+                    }
+                }
+                
                 // デバッグ：パターンが正しく設定されているか確認（最初の数回のみ）
                 if (index === 0 && Math.random() < 0.01) {
-                    console.log('I-E Pulse behavior - pattern:', particle.userData.pattern, 'cohesion:', particle.userData.cohesion);
+                    console.log('I-E Pulse behavior - pattern:', particle.userData.pattern, 'cohesion:', particle.userData.cohesion, 'transition:', transitionFactor);
                 }
                 
                 const distance = basePos.length();
                 
                 // 時間オフセットを使用した滑らかなパルス（設定されていない場合はindex基準）
-                const timeOffset = particle.userData.pulseTimeOffset || (index * 0.15);
+                let timeOffset = particle.userData.pulseTimeOffset;
+                if (timeOffset === undefined) {
+                    // 初回の場合、現在位置に基づいて自然な時間オフセットを計算
+                    const currentDistance = particle.position.length();
+                    const currentPulseRatio = Math.max(0.85, Math.min(1.0, currentDistance / distance));
+                    const normalizedPulse = Math.max(-1, Math.min(1, (currentPulseRatio - 0.925) / 0.075));
+                    
+                    // より安全な位相計算（Math.asinの代わりにMath.atan2を使用）
+                    const basePhase = Math.atan2(normalizedPulse, Math.sqrt(1 - normalizedPulse * normalizedPulse));
+                    timeOffset = basePhase - time * 1.2;
+                    particle.userData.pulseTimeOffset = timeOffset;
+                }
                 
                 // より短い距離での脈動（0.85-1.0の範囲に調整）
                 const pulse = Math.sin(time * 1.2 + timeOffset) * 0.075 + 0.925;
@@ -7910,9 +7951,8 @@
                 const direction = basePos.clone().normalize();
                 const pulsedDistance = distance * finalPulse;
                 
-                // 位置更新: 元の方向を維持しながら距離だけを脈動
-                particle.position.copy(direction);
-                particle.position.multiplyScalar(pulsedDistance);
+                // 目標位置を計算
+                const targetPosition = direction.clone().multiplyScalar(pulsedDistance);
                 
                 // 軽微な円軌道運動を追加（内なる声を「聴く」動きを表現）
                 const orbitAngle = time * 0.3 + index * 0.5;
@@ -7920,11 +7960,25 @@
                 const orbitX = Math.cos(orbitAngle) * orbitRadius;
                 const orbitZ = Math.sin(orbitAngle) * orbitRadius;
                 
-                particle.position.x += orbitX;
-                particle.position.z += orbitZ;
+                targetPosition.x += orbitX;
+                targetPosition.z += orbitZ;
+                
+                if (shouldBlendWithEmergence) {
+                    // 出現アニメーションとパルス動作をブレンド
+                    const currentPos = particle.position.clone();
+                    particle.position.lerpVectors(currentPos, targetPosition, transitionFactor * 0.1);
+                } else {
+                    // 通常のパルス動作
+                    particle.position.copy(targetPosition);
+                }
                 
                 // 透明度も微細に変動（思考の深さを表現）
-                particle.material.opacity = 0.7 + finalPulse * 0.2;
+                const targetOpacity = 0.7 + finalPulse * 0.2;
+                if (shouldBlendWithEmergence) {
+                    particle.material.opacity = THREE.MathUtils.lerp(particle.material.opacity, targetOpacity, transitionFactor * 0.1);
+                } else {
+                    particle.material.opacity = targetOpacity;
+                }
             }
             
             animateGrowthBehavior(particle, index, time) {
