@@ -4269,9 +4269,10 @@
             }
 
             createWireframeGeometry(geometry) {
-                // ワイヤーフレーム効果用
-                const wireframe = new THREE.WireframeGeometry(geometry);
-                return wireframe;
+                // エッジのみを表示（面の内部の対角線を除去）
+                // thresholdAngleを設定して、隣接する面の角度が一定以上の場合のみエッジとして認識
+                const edges = new THREE.EdgesGeometry(geometry, 40); // 40度の角度閾値
+                return edges;
             }
         }
 
@@ -5271,9 +5272,20 @@
                 const faceCount = geometry.attributes.position.count / 3;
                 const faceColors = [];
                 
+                // 白色（未知なる可能性）の定義
+                const whiteColor = new THREE.Color(0xffffff);
+                
                 // 各面に色を割り当て
                 for (let i = 0; i < faceCount; i++) {
-                    const color = new THREE.Color(colors[i % colors.length]);
+                    let color;
+                    
+                    // 指定された色数までは多様な色、残りは白（未知なる可能性）
+                    if (i < colors.length) {
+                        color = new THREE.Color(colors[i]);
+                    } else {
+                        color = whiteColor; // 未知なる可能性を表現する白い面
+                    }
+                    
                     // 各頂点（3つ）に同じ色を割り当て
                     faceColors.push(color.r, color.g, color.b);
                     faceColors.push(color.r, color.g, color.b);
