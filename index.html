@@ -3757,11 +3757,23 @@
                     const coreMaterial = new THREE.MeshBasicMaterial({
                         color: randomColor,
                         transparent: true,
-                        opacity: 0.7 // 少し不透明度を上げて個性を際立たせる
+                        opacity: 0.4 // 存在感を抑えるため半透明に変更
                     });
                     
                     const core = new THREE.Mesh(coreGeometry, coreMaterial);
                     core.position.copy(position);
+                    
+                    // ワイヤーフレーム効果（エッジ強調）- 中央コアと同様
+                    const wireframeGeometry = new THREE.EdgesGeometry(coreGeometry);
+                    const wireframeMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.6,
+                        linewidth: 1
+                    });
+                    
+                    const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+                    core.add(wireframe); // コアの子として追加
                     
                     // グロー効果も同じ形状で少し大きく、同じ色調で
                     const glowScale = 1.5;
@@ -3775,7 +3787,7 @@
                     const glowMaterial = new THREE.MeshBasicMaterial({
                         color: glowColor,
                         transparent: true,
-                        opacity: 0.25
+                        opacity: 0.15 // グローも控えめに変更
                     });
                     
                     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
@@ -5121,15 +5133,45 @@
                 const stageData = this.getStageData(stage);
                 const stageColor = stageData.color;
                 
-                // 多面体用マテリアル（エッジを強調）
-                const coreMaterial = new THREE.MeshPhongMaterial({ 
-                    color: stageColor,
-                    emissive: 0x333333,
-                    transparent: true,
-                    opacity: 0.85,
-                    shininess: 100,
-                    wireframe: false
-                });
+                // diverseColors配列を定義
+                const diverseColors = [
+                    0x87ceeb, // スカイブルー - 理性的な他者
+                    0xffa07a, // ライトサーモン - 温かい他者
+                    0x98fb98, // ペールグリーン - 自然体な他者
+                    0xdda0dd, // プラム - 神秘的な他者
+                    0xf0e68c, // カーキ - 地に足ついた他者
+                    0xffb6c1, // ライトピンク - 感情豊かな他者
+                    0xffd700, // ゴールド - 輝く他者
+                    0xff6347, // トマト - 情熱的な他者
+                    0x40e0d0, // ターコイズ - 清らかな他者
+                    0xda70d6, // オーキッド - 個性的な他者
+                    0x32cd32, // ライムグリーン - 生命力ある他者
+                    0xff69b4, // ホットピンク - 活発な他者
+                    0x00ced1, // ダークターコイズ - 深い他者
+                    0xffa500, // オレンジ - エネルギッシュな他者
+                    0x9370db  // ミディアムパープル - 創造的な他者
+                ];
+                
+                // 段階に応じた色数を決定
+                const colorCount = this.getColorCountForStage(stage);
+                const selectedColors = this.selectColorsForStage(diverseColors, colorCount);
+                
+                // 多面体用マテリアル（面ごとに色分け）
+                let coreMaterial;
+                if (selectedColors.length > 1) {
+                    // 複数色の場合、面ごとに異なる色を適用
+                    coreMaterial = this.createMultiColorMaterial(coreGeometry, selectedColors);
+                } else {
+                    // 単色の場合、従来通り
+                    coreMaterial = new THREE.MeshPhongMaterial({ 
+                        color: selectedColors[0],
+                        emissive: 0x333333,
+                        transparent: true,
+                        opacity: 0.85,
+                        shininess: 100,
+                        wireframe: false
+                    });
+                }
                 
                 // メインの多面体メッシュ
                 this.core = new THREE.Mesh(coreGeometry, coreMaterial);
@@ -5185,6 +5227,71 @@
                     
                     this.core.add(lightSphere); // コアの子として追加
                 }
+            }
+
+            // 段階に応じた色数を決定
+            getColorCountForStage(stage) {
+                switch(stage) {
+                    case 'Ea':
+                    case 'Eb': 
+                    case 'Ec':
+                        // Tetrahedron: 1色
+                        return 1;
+                        
+                    case 'EI':
+                    case 'E-I':
+                    case 'I-E':
+                        // Octahedron: 3色
+                        return 3;
+                        
+                    case 'IE':
+                    case 'Ia':
+                        // Dodecahedron: 5色
+                        return 5;
+                        
+                    case 'Ib':
+                    case 'Ic':
+                        // Icosahedron: 8色
+                        return 8;
+                        
+                    default:
+                        return 1;
+                }
+            }
+
+            // 段階に応じた色を選択
+            selectColorsForStage(diverseColors, colorCount) {
+                const shuffled = [...diverseColors].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, colorCount);
+            }
+
+            // 複数色マテリアルを作成
+            createMultiColorMaterial(geometry, colors) {
+                // 面の数を取得
+                const faceCount = geometry.attributes.position.count / 3;
+                const faceColors = [];
+                
+                // 各面に色を割り当て
+                for (let i = 0; i < faceCount; i++) {
+                    const color = new THREE.Color(colors[i % colors.length]);
+                    // 各頂点（3つ）に同じ色を割り当て
+                    faceColors.push(color.r, color.g, color.b);
+                    faceColors.push(color.r, color.g, color.b);
+                    faceColors.push(color.r, color.g, color.b);
+                }
+                
+                // 色属性を追加
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(faceColors, 3));
+                
+                // 頂点カラーを使用するマテリアル
+                return new THREE.MeshPhongMaterial({
+                    vertexColors: true,
+                    emissive: 0x222222,
+                    transparent: true,
+                    opacity: 0.85,
+                    shininess: 100,
+                    wireframe: false
+                });
             }
 
             initializeLightVeils() {
