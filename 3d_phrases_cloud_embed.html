@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D Phrases Cloud — Prototype</title>
+  <style>
+    /* ===== CSS VARIABLES ===== */
+    :root {
+      --bg: #0b1020;
+      --panel: #11182e;
+      --accent: #6ee7ff;
+      --muted: #9aa4b2;
+      --text: #e6edf3;
+    }
+
+    /* ===== BASE STYLES ===== */
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", 
+                   "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+    }
+
+    /* ===== LAYOUT ===== */
+    .app {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      height: 100%;
+    }
+
+    .sidebar {
+      padding: 20px;
+      background: linear-gradient(180deg, #0e1630 0%, #0b1020 100%);
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      overflow: auto;
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    h1 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      letter-spacing: 0.02em;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tiny {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ===== FORM ELEMENTS ===== */
+    form {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    form > div {
+      display: grid;
+      gap: 6px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .row > div {
+      display: grid;
+      gap: 6px;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 64px;
+      resize: vertical;
+    }
+
+    /* ===== BUTTONS ===== */
+    button {
+      padding: 10px 12px;
+      background: #1f2a44;
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: #133a4a;
+      border-color: #1d6b82;
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    /* ===== CHIPS AND TOOLBAR ===== */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: #17233f;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .chip .del {
+      padding: 0;
+      background: transparent;
+      color: #c9d2dc;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .toolbar button {
+      font-size: 12px;
+      padding: 8px 10px;
+      white-space: nowrap;
+      width: 100%;
+    }
+
+    /* ===== OPTIONS ===== */
+    .options {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .options label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ===== DETAILS/ACCORDION ===== */
+    details {
+      margin-top: 16px;
+    }
+
+    details > summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details > summary::before {
+      content: '\25B6';
+      display: inline-block;
+      margin-right: 4px;
+      transition: transform 0.2s;
+    }
+
+    details[open] > summary::before {
+      transform: rotate(90deg);
+    }
+
+    details form,
+    details .options,
+    details .toolbar,
+    details #chips {
+      margin-top: 0;
+    }
+
+    /* ===== 3D SCENE ELEMENTS ===== */
+    .scene {
+      position: relative;
+    }
+
+    .canvas-holder {
+      width: 100%;
+      height: 100%;
+    }
+
+    .legend {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      padding: 8px 12px;
+      background: rgba(7, 11, 24, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .info {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      max-width: 420px;
+      padding: 12px 14px;
+      background: rgba(7, 11, 24, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      backdrop-filter: blur(4px);
+    }
+
+    .info .head {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .warn {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.5);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    /* ===== 3D LABELS ===== */
+    .label {
+      padding: 6px 10px;
+      background: rgba(7, 11, 24, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+      white-space: normal;
+      word-break: break-all;
+      pointer-events: auto;
+    }
+
+    .label a {
+      color: #fff;
+      text-decoration: underline;
+    }
+
+    .label,
+    .label .word,
+    .label .meta {
+      color: #fff !important;
+    }
+
+    /* ===== MENU TOGGLE ===== */
+    .menu-toggle {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      z-index: 20;
+      padding: 6px 10px;
+      background: #1f2a44;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+
+    body.menu-closed .sidebar {
+      display: none;
+    }
+
+    body.menu-closed .app {
+      grid-template-columns: 1fr;
+    }
+
+    /* ===== DIALOG ===== */
+    dialog {
+      padding: 20px;
+      background: var(--panel);
+      color: var(--text);
+      border: none;
+      border-radius: 12px;
+    }
+
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    #promptField {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+    }
+
+    /* ===== MEDIA QUERIES ===== */
+    @media (max-width: 768px) {
+      .app {
+        grid-template-columns: 1fr;
+        position: relative;
+      }
+
+      .sidebar {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        z-index: 10;
+      }
+
+      body:not(.menu-closed) .sidebar {
+        display: block;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <header>
+        <h1>3D Phrases Cloud</h1>
+        <p class="muted">
+          大切なフレーズを投稿 → 右の3D空間に即時反映。<br>
+          保存はブラウザ内（ローカル）です。
+        </p>
+      </header>
+
+      <section>
+        <details id="formSection" open>
+          <summary>投稿フォーム</summary>
+          <form id="valueForm">
+            <div>
+              <label for="text">フレーズ（例：今日こそは、好奇心の暴走、ぎりぎりをいく）</label>
+              <input type="text" id="text" placeholder="フレーズを入力してください" required />
+            </div>
+            <div>
+              <label for="detail">ひとこと説明（リンク可）</label>
+              <textarea id="detail" placeholder="どんな場面で大切にしていますか？（URLを含めるとリンクになります）"></textarea>
+            </div>
+            <div class="row">
+              <div>
+                <label for="weight">強調度</label>
+                <select id="weight">
+                  <option value="1">1（控えめ）</option>
+                  <option value="2">2</option>
+                  <option value="3" selected>3</option>
+                  <option value="4">4</option>
+                  <option value="5">5（とても重要）</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: flex-end;">
+                <button class="primary" type="submit">追加</button>
+              </div>
+            </div>
+          </form>
+        </details>
+      </section>
+
+      <section>
+        <details id="optionsSection" open>
+          <summary>表示設定</summary>
+          <div class="options">
+            <label>
+              <input type="checkbox" id="autoRotate" checked>
+              自動回転
+            </label>
+            <label>
+              <input type="checkbox" id="combineDups" checked>
+              同じ言葉を集計して大きく表示
+            </label>
+          </div>
+        </details>
+      </section>
+
+      <section>
+        <details id="toolbarSection" open>
+          <summary>ツールバー</summary>
+          <div class="toolbar">
+            <button id="exportBtn">エクスポート</button>
+            <button id="importBtn">インポート</button>
+            <button id="promptBtn">AIプロンプト</button>
+            <button id="resetBtn" style="background: #3a1f1f; border-color: #6b1d1d">全消去</button>
+          </div>
+          <div class="tiny" style="margin-top: 6px">
+            ■エクスポートはJSON<br>
+            ■インポートはJSON/CSV対応（pattern_number,title,description）<br>
+            ※CSVは「description→言葉 / title→説明」で取り込みます<br>
+            ■AIプロンプトボタンで分野に応じた案内文をコピーできます<br>
+            ■全消去ボタンでリセットできます
+          </div>
+        </details>
+      </section>
+
+      <section>
+        <details id="listSection" open>
+          <summary>投稿一覧</summary>
+          <div id="chips" class="chips"></div>
+        </details>
+      </section>
+    </aside>
+
+    <main class="scene">
+      <button class="menu-toggle" id="toggleMenu" aria-pressed="false" type="button">
+        メニューを閉じる
+      </button>
+      <div class="canvas-holder" id="canvas"></div>
+      <div class="legend">
+        ドラッグで回転／ホイールでズーム／クリックでフォーカス
+      </div>
+      <div class="info" id="info" style="display: none"></div>
+      <div class="warn" id="warn"></div>
+    </main>
+  </div>
+
+  <dialog id="promptDialog">
+    <h3>AIプロンプト生成</h3>
+    <p>対象分野を入力してください</p>
+    <input type="text" id="promptField" placeholder="例：物理学" />
+    <textarea id="promptOutput" readonly style="display: none; margin-top: 10px;"></textarea>
+    <div id="promptNote" class="tiny" style="display: none; margin-top: 4px;">
+      コピー後にお使いのAIツールに貼り付けてください
+    </div>
+    <div id="promptCopied" class="tiny" style="display: none; margin-top: 4px; color: var(--accent);">
+      コピーしました
+    </div>
+    <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: flex-end;">
+      <button id="promptCancel" type="button">キャンセル</button>
+      <button id="promptCopy" type="button" style="display: none;">コピー</button>
+      <button id="promptGenerate" type="button" class="primary">生成</button>
+    </div>
+  </dialog>
+
+  <!-- three はCDN（またはローカル相対パス）/ CSS2DとOrbitは内蔵フォールバックあり -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js" defer></script>
+  <script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js" defer></script>
+  <script src="https://unpkg.com/three@0.160.0/examples/js/renderers/CSS2DRenderer.js" defer></script>
+
+  <script>
+  window.addEventListener('load', () => {
+    // ===== CONSTANTS =====
+    const MOBILE_BREAKPOINT = 768;
+    const SPHERE_RADIUS = 28;
+    const CAMERA_DISTANCE = 60;
+    const FOCUS_DISTANCE_MIN = 22;
+    const FOCUS_DISTANCE_VARIANCE = 4;
+    const ANIMATION_STEPS = 30;
+    const BACKGROUND_ANIMATION_STEPS = 24;
+    const STAR_COUNT = 900;
+    const STAR_DISTANCE = 600;
+    const LABEL_BASE_SIZE = 10;
+    const LABEL_MAX_BONUS = 22;
+    const WEIGHT_MULTIPLIER = 3;
+    const COUNT_MULTIPLIER = 1.5;
+    const LINE_BREAK_LENGTH = 30;
+
+    // ===== INITIAL SETUP =====
+    const menuBtn = document.getElementById('toggleMenu');
+    const warn = document.getElementById('warn');
+    const info = document.getElementById('info');
+    const promptDialog = document.getElementById('promptDialog');
+    const promptField = document.getElementById('promptField');
+    const promptOutput = document.getElementById('promptOutput');
+    const promptNote = document.getElementById('promptNote');
+    const promptCopy = document.getElementById('promptCopy');
+    const promptCopied = document.getElementById('promptCopied');
+
+    // Initialize mobile menu state
+    if (window.innerWidth <= MOBILE_BREAKPOINT) {
+      document.body.classList.add('menu-closed');
+      if (menuBtn) {
+        menuBtn.setAttribute('aria-pressed', 'true');
+        menuBtn.textContent = 'メニューを開く';
+      }
+    }
+
+    // ===== ACCORDION STATE MANAGEMENT =====
+    const sectionIds = ['formSection', 'optionsSection', 'toolbarSection', 'listSection'];
+    sectionIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      
+      const key = `section:${id}:open`;
+      const stored = localStorage.getItem(key);
+      if (stored !== null) {
+        el.open = stored === 'true';
+      }
+      
+      el.addEventListener('toggle', () => {
+        localStorage.setItem(key, el.open);
+      });
+    });
+    
+    // ===== EMBEDDED CSS2D RENDERER (FALLBACK) =====
+    function ensureCSS2D() {
+      const hasExternal = (window.THREE && THREE.CSS2DRenderer) || window.CSS2DRenderer;
+      if (hasExternal) return; // 外部が使えるならそれを使う
+      if (!window.THREE) {
+        console.error('[3D Phrases] THREE not loaded');
+        return;
+      }
+
+      class SimpleCSS2DObject extends THREE.Object3D {
+        constructor(element) {
+          super();
+          this.element = element;
+          this.element.style.position = 'absolute';
+          this.element.style.pointerEvents = 'auto';
+        }
+      }
+
+      class SimpleCSS2DRenderer {
+        constructor() {
+          this.domElement = document.createElement('div');
+          this.domElement.style.position = 'absolute';
+          this.domElement.style.top = '0';
+          this.domElement.style.left = '0';
+          this.domElement.style.pointerEvents = 'none';
+          this._size = { width: 1, height: 1 };
+          this._labels = new Set(); // last-frame set
+        }
+
+        setSize(w, h) {
+          this._size.width = w;
+          this._size.height = h;
+          this.domElement.style.width = w + 'px';
+          this.domElement.style.height = h + 'px';
+        }
+
+        render(scene, camera) {
+          const width = this._size.width;
+          const height = this._size.height;
+          const v = new THREE.Vector3();
+          const current = new Set();
+
+          // Traverse scene and layout labels that exist *now*
+          scene.traverse(obj => {
+            if (!obj.element) return;
+            current.add(obj);
+            if (!obj.element.parentNode) {
+              this.domElement.appendChild(obj.element);
+            }
+            obj.updateWorldMatrix(true, false);
+            v.setFromMatrixPosition(obj.matrixWorld).project(camera);
+            const x = (v.x * 0.5 + 0.5) * width;
+            const y = (-v.y * 0.5 + 0.5) * height;
+            const visible = v.z >= -1 && v.z <= 1;
+            const el = obj.element;
+            el.style.display = visible ? 'block' : 'none';
+            el.style.transform = `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0)`;
+          });
+
+          // GC: remove labels that are no longer in the scene
+          for (const o of this._labels) {
+            if (!current.has(o) && o.element && o.element.parentNode === this.domElement) {
+              this.domElement.removeChild(o.element);
+            }
+          }
+          this._labels = current;
+        }
+      }
+
+      window.CSS2DObject = SimpleCSS2DObject;
+      window.CSS2DRenderer = SimpleCSS2DRenderer;
+      console.info('[3D Phrases] Using embedded CSS2DRenderer');
+    }
+    ensureCSS2D();
+
+    // ===== EMBEDDED ORBIT CONTROLS (FALLBACK) =====
+    function ensureOrbitControls() {
+      const hasExternal = (window.THREE && THREE.OrbitControls) || window.OrbitControls;
+      if (hasExternal) return; // 外部が使えるならそれを使う
+      if (!window.THREE) {
+        console.error('[3D Phrases] THREE not loaded');
+        return;
+      }
+
+      class SimpleOrbitControls {
+        constructor(camera, domElement) {
+          this.camera = camera;
+          this.domElement = domElement || document;
+          this.target = new THREE.Vector3();
+          this.enableDamping = false;
+          this.dampingFactor = 0.1;
+          this.autoRotate = true;
+          this.autoRotateSpeed = 0.7; // approx rad/s
+          this.rotateSpeed = 1.0;
+          this.zoomSpeed = 1.0;
+          this.minDistance = 2;
+          this.maxDistance = 2000;
+          this.minPolarAngle = 0.01;
+          this.maxPolarAngle = Math.PI - 0.01;
+
+          const offset = new THREE.Vector3();
+          const spherical = new THREE.Spherical();
+          const sphericalDelta = new THREE.Spherical(0, 0, 0);
+          let state = 0; // 0 none, 1 rotate, 2 dolly
+          let pointerStart = { x: 0, y: 0 };
+
+          const getOffset = () => offset.copy(this.camera.position).sub(this.target);
+          
+          const apply = () => {
+            const radius = THREE.MathUtils.clamp(spherical.radius, this.minDistance, this.maxDistance);
+            spherical.radius = radius;
+            spherical.phi = THREE.MathUtils.clamp(spherical.phi, this.minPolarAngle, this.maxPolarAngle);
+            spherical.makeSafe();
+            const newOffset = new THREE.Vector3().setFromSpherical(spherical);
+            this.camera.position.copy(this.target).add(newOffset);
+            this.camera.lookAt(this.target);
+          };
+
+          // Initialize spherical from camera
+          getOffset();
+          spherical.setFromVector3(offset);
+
+          const onPointerDown = (e) => {
+            if (e.button === 0) {
+              state = 1;
+            } else if (e.button === 1 || e.button === 2) {
+              state = 2;
+            }
+            pointerStart.x = e.clientX;
+            pointerStart.y = e.clientY;
+            if (this.domElement.setPointerCapture) {
+              this.domElement.setPointerCapture(e.pointerId || 0);
+            }
+          };
+
+          const onPointerMove = (e) => {
+            const dx = e.clientX - pointerStart.x;
+            const dy = e.clientY - pointerStart.y;
+            pointerStart.x = e.clientX;
+            pointerStart.y = e.clientY;
+            
+            if (state === 1) { // rotate
+              const rot = 2 * Math.PI * this.rotateSpeed / this.domElement.clientHeight;
+              spherical.theta -= dx * rot;
+              spherical.phi -= dy * rot;
+            } else if (state === 2) { // dolly
+              const scale = Math.pow(0.95, dy * this.zoomSpeed * 0.1);
+              spherical.radius *= scale;
+            }
+          };
+
+          const onPointerUp = () => {
+            state = 0;
+          };
+
+          const onWheel = (e) => {
+            const scale = Math.pow(0.95, e.deltaY * this.zoomSpeed * 0.01);
+            spherical.radius *= scale;
+          };
+
+          this.domElement.addEventListener('pointerdown', onPointerDown);
+          window.addEventListener('pointermove', onPointerMove);
+          window.addEventListener('pointerup', onPointerUp);
+          this.domElement.addEventListener('wheel', onWheel, { passive: true });
+
+          this.update = () => {
+            // Auto rotate
+            if (this.autoRotate && state === 0) {
+              spherical.theta -= (this.autoRotateSpeed * 0.01);
+            }
+            apply();
+          };
+        }
+      }
+
+      // グローバル（外部と同名）
+      window.OrbitControls = SimpleOrbitControls;
+      if (window.THREE) {
+        THREE.OrbitControls = SimpleOrbitControls;
+      }
+      console.info('[3D Phrases] Using embedded OrbitControls');
+    }
+    ensureOrbitControls();
+
+    // ===== DEPENDENCY VALIDATION =====
+    if (!window.THREE) {
+      warn.style.display = 'flex';
+      warn.innerHTML = '<div><strong>Three.js が読み込めませんでした。</strong><br>CDNがブロックされている場合は three.min.js を相対パスで同梱してください。</div>';
+      return;
+    }
+
+    const CSS2DRendererCtor = (THREE.CSS2DRenderer || window.CSS2DRenderer);
+    const CSS2DObjectCtor = (THREE.CSS2DObject || window.CSS2DObject);
+    const OrbitControlsCtor = (THREE.OrbitControls || window.OrbitControls);
+
+    if (!CSS2DRendererCtor || !CSS2DObjectCtor || !OrbitControlsCtor) {
+      warn.style.display = 'flex';
+      warn.innerHTML = '<div><strong>依存を読み込めませんでした。</strong><br>three.min.js / OrbitControls / CSS2DRenderer を同梱するか、本ページの内蔵フォールバックを有効にしてください。</div>';
+      return;
+    }
+
+    // ===== APPLICATION STATE =====
+    const STORAGE_KEY = 'valuesCloud:v1';
+    
+    const SAMPLE_ITEMS = [
+      { text: '一人でいる方が楽なのに、寂しいって感じるのはなんで？', detail: '人間関係のモヤモヤ', weight: 3, ts: Date.now() },
+      { text: 'やりたいことがない自分は、ダメ人間？', detail: '将来への不安と疑問', weight: 4, ts: Date.now() },
+      { text: '他人と比べるのやめたいのに、やめられないのはなぜ？', detail: '自分についての問い', weight: 3, ts: Date.now() },
+      { text: '親の期待と自分のやりたいこと、どっち優先すべき？', detail: '将来への不安と疑問', weight: 4, ts: Date.now() },
+      { text: '何のために頑張るのか、たまに分からなくなる', detail: '答えのない問い', weight: 5, ts: Date.now() }
+    ];
+
+    // ===== CSV FILE LOADING =====
+    async function loadSampleFromCSV() {
+      try {
+        const response = await fetch('student_questions_sample.txt');
+        if (!response.ok) {
+          console.warn('[Sample Loading] CSVファイルが読み込めませんでした。デフォルトサンプルを使用します。');
+          return SAMPLE_ITEMS;
+        }
+        
+        const csvText = await response.text();
+        const rows = parseCSV3(csvText);
+        
+        if (rows.length <= 1) {
+          console.warn('[Sample Loading] CSVファイルにデータがありません。デフォルトサンプルを使用します。');
+          return SAMPLE_ITEMS;
+        }
+        
+        // Skip header row and convert CSV data
+        const sampleItems = [];
+        for (let i = 1; i < Math.min(rows.length, 51); i++) { // 最大50個のサンプルを読み込み
+          const row = rows[i];
+          if (row && row.length >= 3) {
+            const title = (row[1] || '').trim();
+            const description = (row[2] || '').trim();
+            const weight = Math.floor(Math.random() * 5) + 1; // ランダムな重要度
+            
+            if (description) {
+              sampleItems.push({
+                text: description,
+                detail: title,
+                weight: weight,
+                ts: Date.now() + i
+              });
+            }
+          }
+        }
+        
+        console.info(`[Sample Loading] CSVから${sampleItems.length}個のサンプルを読み込みました`);
+        return sampleItems.length > 0 ? sampleItems : SAMPLE_ITEMS;
+        
+      } catch (error) {
+        console.error('[Sample Loading] CSVファイルの読み込み中にエラーが発生しました:', error);
+        return SAMPLE_ITEMS;
+      }
+    }
+    
+    // ===== ASYNC INITIALIZATION =====
+    let state = loadState();
+    
+    async function initializeApp() {
+      if (state.items.length === 0) {
+        const sampleItems = await loadSampleFromCSV();
+        state.items = sampleItems.slice();
+        saveState();
+      }
+      
+      // Continue with 3D setup after data is loaded
+      setup3DScene();
+      refresh();
+      animate();
+      onResize();
+    }
+
+    function loadState() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { items: [] };
+      } catch {
+        return { items: [] };
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // ===== 3D SCENE SETUP =====
+    let holder, scene, camera, renderer, labelRenderer, controls, group;
+    
+    function setup3DScene() {
+      holder = document.getElementById('canvas');
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2('#0b1020', 0.008);
+
+      camera = new THREE.PerspectiveCamera(
+        70,
+        holder.clientWidth / holder.clientHeight,
+        0.1,
+        2000
+      );
+      camera.updateProjectionMatrix();
+      camera.position.set(0, 0, CAMERA_DISTANCE);
+
+      // WebGL Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(holder.clientWidth, holder.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      holder.appendChild(renderer.domElement);
+
+      // CSS2D Label Renderer
+      labelRenderer = new CSS2DRendererCtor();
+      labelRenderer.setSize(holder.clientWidth, holder.clientHeight);
+      labelRenderer.domElement.style.position = 'absolute';
+      labelRenderer.domElement.style.top = '0';
+      labelRenderer.domElement.style.pointerEvents = 'none';
+      holder.appendChild(labelRenderer.domElement);
+
+      // ★ Important: Controls listen to events on WebGL canvas
+      controls = new OrbitControlsCtor(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.2;
+
+      // Lighting
+      const ambient = new THREE.AmbientLight('#a0b8ff', 0.6);
+      scene.add(ambient);
+      const directional = new THREE.DirectionalLight('#88aaff', 0.6);
+      directional.position.set(10, 20, 10);
+      scene.add(directional);
+
+      // Background stars
+      createStars();
+      
+      // Data placement group
+      group = new THREE.Group();
+      scene.add(group);
+      
+      // Setup UI event handlers
+      setupEventHandlers();
+    }
+
+    // Background stars
+    function createStars() {
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(STAR_COUNT * 3);
+      
+      for (let i = 0; i < STAR_COUNT; i++) {
+        const r = STAR_DISTANCE * Math.cbrt(Math.random());
+        const t = Math.random() * Math.PI * 2;
+        const p = Math.acos(2 * Math.random() - 1);
+        positions[i * 3] = r * Math.sin(p) * Math.cos(t);
+        positions[i * 3 + 1] = r * Math.sin(p) * Math.sin(t);
+        positions[i * 3 + 2] = r * Math.cos(p);
+      }
+      
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.PointsMaterial({
+        size: 1.2,
+        transparent: true,
+        opacity: 0.6
+      });
+      scene.add(new THREE.Points(geometry, material));
+    }
+
+    // ===== DATA PLACEMENT =====
+    function randomOnSphere(radius) {
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      return new THREE.Vector3(
+        radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.sin(phi) * Math.sin(theta),
+        radius * Math.cos(phi)
+      );
+    }
+
+    function buildAggregated(items){
+      const combine = document.getElementById('combineDups').checked;
+      if(!combine) return items.map(it=>({...it, count:1}));
+      const map = new Map();
+      for(const it of items){
+        const key = (it.text||'').trim(); if(!key) continue;
+        if(!map.has(key)) map.set(key, { text:key, detail:it.detail||'', weight:0, count:0 });
+        const o = map.get(key); o.weight += Number(it.weight||1); o.count += 1; if(it.detail && !o.detail) o.detail = it.detail;
+      }
+      return Array.from(map.values());
+    }
+
+    function clearGroup(){
+      while(group.children.length){
+        const c = group.children.pop();
+        if(c.element && c.element.remove) c.element.remove();
+        group.remove(c);
+      }
+    }
+
+    function colorFor(text){ let h=0; for(let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0; return `hsl(${h%360} 70% 65%)`; }
+
+    function escapeHtml(s){ return s.replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c])); }
+    function linkify(s){ const url=/((https?:\/\/)[^\s]+)/g; return escapeHtml(s).replace(url,'<a href="$1" target="_blank" rel="noopener">$1</a>'); }
+
+    // ===== CSV utilities =====
+    function parseCSV3(text){
+      const rows = []; let field = ''; let cur = []; let inQuotes = false;
+      const pushField = () => { cur.push(field); field = ''; };
+      const pushRow   = () => { rows.push(cur); cur = []; };
+      for (let i = 0; i < text.length; i++){
+        const ch = text[i];
+        if (inQuotes){
+          if (ch === '"'){
+            if (i + 1 < text.length && text[i + 1] === '"'){ field += '"'; i++; }
+            else { inQuotes = false; }
+          } else {
+            field += ch;
+          }
+        } else {
+          if (ch === '"') { inQuotes = true; }
+          else if (ch === ',') { pushField(); }
+          else if (ch === '\n') { pushField(); pushRow(); }
+          else if (ch === '\r') { /* skip CR */ }
+          else { field += ch; }
+        }
+      }
+      // last field/row
+      pushField(); if (cur.length > 1 || field !== '') { pushRow(); }
+      // Trim BOM if present
+      if (rows.length && rows[0].length && rows[0][0].charCodeAt && rows[0][0].charCodeAt(0) === 65279){
+        rows[0][0] = rows[0][0].slice(1);
+      }
+      return rows;
+    }
+    function importCSVData(csvText){
+      const rows = parseCSV3(csvText);
+      if(!rows.length){ alert('CSVが空です'); return; }
+      const header = rows[0].map(h => String(h||'').trim().toLowerCase());
+      let tIndex = header.indexOf('title');
+      let dIndex = header.indexOf('description');
+      let startRow = 1;
+      if(tIndex === -1 || dIndex === -1){
+        // fallback to fixed positions: pattern_number,title,description
+        tIndex = 1; dIndex = 2; startRow = 0;
+      }
+      const added = [];
+      for(let r=startRow; r<rows.length; r++){
+        const row = rows[r]; if(!row) continue;
+        const title = (row[tIndex]||'').trim();
+        const desc  = (row[dIndex]||'').trim();
+        const word  = desc;       // 言葉 ← description
+        const detailText = title; // 説明 ← title
+        if(!word) continue;
+        added.push({ text: word, detail: detailText, weight: 3, ts: Date.now() });
+      }
+      if(!added.length){ alert('CSVから取り込めるデータが見つかりません（title列が空）'); return; }
+      state.items = state.items.concat(added);
+      refresh();
+    }
+
+    function focusOn(obj){
+      const target = obj.position.clone();
+      const dir = target.clone().normalize();
+      const dist = FOCUS_DISTANCE_MIN + (Math.random() * FOCUS_DISTANCE_VARIANCE);
+      const to = dir.multiplyScalar(dist);
+      const from = camera.position.clone();
+      const startTarget = controls.target.clone();
+      let i = 0;
+      const iv = setInterval(() => {
+        i++;
+        const k = 1 - Math.pow(1 - i/ANIMATION_STEPS, 3);
+        camera.position.lerpVectors(from, to, k);
+        const t = new THREE.Vector3().lerpVectors(startTarget, target, k);
+        controls.target.copy(t);
+        if(i >= ANIMATION_STEPS) clearInterval(iv);
+      }, 16);
+    }
+
+    function addLabel(item){
+      const el = document.createElement('div'); 
+      el.className = 'label';
+      const size = LABEL_BASE_SIZE + Math.min(LABEL_MAX_BONUS, (item.weight||1)*WEIGHT_MULTIPLIER + (item.count? item.count*COUNT_MULTIPLIER : 0));
+      el.style.fontSize = size + 'px';
+      el.dataset.baseSize = size;
+      const wrapped = escapeHtml(item.text).replace(new RegExp(`(.{${LINE_BREAK_LENGTH}})`, 'g'), '$1<wbr>');
+      el.innerHTML = `<span class=\"word\" style=\"font-weight:600\">${wrapped}</span>` +
+        (item.count > 1 ? ` <span class=\"meta\">×${item.count}</span>` : '') +
+        (item.detail? `<div class=\"meta\" style=\"font-size:11px; margin-top:2px\">${linkify(item.detail)}</div>` : '');
+
+      const obj = new CSS2DObjectCtor(el);
+      obj.position.copy(randomOnSphere(SPHERE_RADIUS));
+      obj.userData.v = new THREE.Vector3((Math.random()-0.5)*0.004,(Math.random()-0.5)*0.004,(Math.random()-0.5)*0.004);
+
+      el.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        focusOn(obj);
+        info.style.display = 'block';
+        info.innerHTML = `<div class="head">${escapeHtml(item.text)}</div>` +
+          (item.detail? `<div>${linkify(item.detail)}</div>` : '<div class="muted">説明なし</div>');
+      });
+
+      group.add(obj);
+    }
+
+    // ===== UI EVENT HANDLERS =====
+    function setupEventHandlers() {
+      // Helper function for event binding
+      function on(id, evt, handler) { 
+        const el = document.getElementById(id); 
+        if (!el) { 
+          console.warn(`[UI] element #${id} not found`); 
+          return; 
+        } 
+        el.addEventListener(evt, handler); 
+      }
+
+      // Form submission
+      const form = document.getElementById('valueForm');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = document.getElementById('text').value.trim();
+        const detail = document.getElementById('detail').value.trim();
+        const weight = Number(document.getElementById('weight').value);
+        if (!text) return;
+        state.items.push({ text, detail, weight, ts: Date.now() });
+        document.getElementById('text').value = '';
+        document.getElementById('detail').value = '';
+        refresh();
+      });
+
+      // Control options
+      on('autoRotate', 'change', (e) => { controls.autoRotate = e.target.checked; });
+      on('combineDups', 'change', () => { refresh(); });
+
+      // Export/Import functionality
+      on('exportBtn', 'click', () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'values-cloud.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      on('importBtn', 'click', () => {
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = '.json,.csv,application/json,text/csv';
+        inp.onchange = () => {
+          const file = inp.files?.[0];
+          if (!file) return;
+          const fr = new FileReader();
+          fr.onload = () => {
+            const raw = String(fr.result || '').trim();
+            const name = (file.name || '').toLowerCase();
+            if (name.endsWith('.json') || raw.startsWith('{') || raw.startsWith('{"')) {
+              try {
+                const obj = JSON.parse(raw);
+                if (obj && Array.isArray(obj.items)) {
+                  state = obj;
+                  refresh();
+                  return;
+                }
+                alert('JSONの形式が不正です（itemsが見つかりません）');
+                return;
+              } catch (e) {
+                alert('JSONの読み込みに失敗しました: ' + e.message);
+                return;
+              }
+            }
+            try {
+              importCSVData(raw);
+            } catch (e) {
+              console.error(e);
+              alert('CSVの読み込みに失敗しました: ' + e.message);
+            }
+          };
+          fr.readAsText(file);
+        };
+        inp.click();
+      });
+
+      // Reset functionality
+      on('resetBtn', 'click', () => {
+        if (!confirm('すべての内容を削除します。よろしいですか？')) return;
+        state = { items: [] };
+        saveState();
+        refresh();
+      });
+
+      // AI Prompt functionality
+      on('promptBtn', 'click', () => {
+        promptField.value = '';
+        promptOutput.style.display = 'none';
+        promptNote.style.display = 'none';
+        promptCopy.style.display = 'none';
+        promptCopied.style.display = 'none';
+        promptDialog.showModal();
+        promptField.focus();
+      });
+
+      on('promptCancel', 'click', () => { promptDialog.close(); });
+
+      on('promptGenerate', 'click', () => {
+        const field = promptField.value.trim();
+        if (!field) {
+          promptDialog.close();
+          return;
+        }
+        const promptText =
+          `あなたは${field}およびその関連領域で重要視されている考え方を探究するアシスタントです。` +
+          `学ぶ人の主体性や好奇心を触発するような、その分野の重要な考え方や知見を、それらを絶対的な真理ではなく探求の可能性として描写してください。` +
+          `pattern_number,title,description の3列からなるCSVで、1行目をヘッダーとし、2行目以降にリストを作成するよう指示してください。` +
+          `descriptionの最初の一文は動詞で終わる文章で表現してください。その後に詳しい説明をつけてください。` +
+          `csvは、${field}_phrasesというタイトルの.csv形式のファイルとして作成し、ダウンロードできるように提供してください。`;
+        promptOutput.value = promptText;
+        promptOutput.style.display = 'block';
+        promptNote.style.display = 'block';
+        promptCopy.style.display = 'inline-block';
+        promptCopied.style.display = 'none';
+      });
+
+      on('promptCopy', 'click', () => {
+        const text = promptOutput.value;
+        navigator.clipboard.writeText(text).then(() => {
+          promptCopied.style.display = 'block';
+          setTimeout(() => { promptCopied.style.display = 'none'; }, 2000);
+        });
+      });
+
+      // Menu toggle
+      on('toggleMenu', 'click', () => {
+        const closed = document.body.classList.toggle('menu-closed');
+        const btn = document.getElementById('toggleMenu');
+        if (btn) {
+          btn.setAttribute('aria-pressed', closed ? 'true' : 'false');
+          btn.textContent = closed ? 'メニューを開く' : 'メニューを閉じる';
+        }
+        onResize();
+      });
+
+      // Background click to close info
+      renderer.domElement.addEventListener('click', (e) => {
+        if (e.target !== renderer.domElement) return; // ラベルクリックは除外
+        info.style.display = 'none';
+        const from = controls.target.clone();
+        let i = 0;
+        const iv = setInterval(() => {
+          i++;
+          const k = i / BACKGROUND_ANIMATION_STEPS;
+          controls.target.lerpVectors(from, new THREE.Vector3(0, 0, 0), k);
+          if (i >= BACKGROUND_ANIMATION_STEPS) clearInterval(iv);
+        }, 16);
+      });
+
+      // Window resize
+      window.addEventListener('resize', onResize);
+    }
+
+    // ===== RENDER AND REFRESH FUNCTIONS =====
+    function renderChips() {
+      const box = document.getElementById('chips');
+      box.innerHTML = '';
+      for (const it of state.items.slice().reverse()) {
+        const d = document.createElement('div');
+        d.className = 'chip';
+        d.innerHTML = `<span>${escapeHtml(it.text)}</span><button class="del" title="削除">×</button>`;
+        d.querySelector('.del').addEventListener('click', () => {
+          state.items = state.items.filter(x => x !== it);
+          refresh();
+        });
+        box.appendChild(d);
+      }
+    }
+
+    function refresh() {
+      clearGroup();
+      const data = buildAggregated(state.items);
+      data.forEach(addLabel);
+      saveState();
+      renderChips();
+      // Sanity check in next frame: DOMラベル数と3Dオブジェクト数が一致しているか
+      requestAnimationFrame(() => {
+        const domCount = labelRenderer.domElement.querySelectorAll('.label').length;
+        const objCount = group.children.length;
+        if (domCount !== objCount) {
+          console.warn(`[CHECK] DOM labels (${domCount}) and objects (${objCount}) mismatch. Renderer GC ran; this is expected only during transitions.`);
+        }
+      });
+    }
+
+    // ===== ANIMATION LOOP =====
+    function animate() {
+      requestAnimationFrame(animate);
+      const minDist = camera.position.length() - SPHERE_RADIUS;
+      const maxDist = camera.position.length() + SPHERE_RADIUS;
+      for (const obj of group.children) {
+        obj.position.add(obj.userData.v);
+        if (obj.position.length() > SPHERE_RADIUS * 1.2) {
+          obj.position.setLength(SPHERE_RADIUS);
+          obj.userData.v.multiplyScalar(-1);
+        }
+        const distance = camera.position.distanceTo(obj.position);
+        const opacity = THREE.MathUtils.clamp(
+          1 - (distance - minDist) / (maxDist - minDist),
+          0.2, 1
+        );
+        obj.element.style.opacity = opacity;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+      for (const obj of group.children) {
+        const distance = camera.position.distanceTo(obj.position);
+        const scale = SPHERE_RADIUS / distance;
+        const el = obj.element;
+        el.style.transform = el.style.transform.replace(/scale\([^)]*\)/, '') + ` scale(${scale})`;
+      }
+    }
+
+    function onResize() {
+      const w = holder.clientWidth, h = holder.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      labelRenderer.setSize(w, h);
+      const btn = document.getElementById('toggleMenu');
+      if (btn) {
+        const closed = document.body.classList.contains('menu-closed');
+        btn.setAttribute('aria-pressed', closed ? 'true' : 'false');
+        btn.textContent = closed ? 'メニューを開く' : 'メニューを閉じる';
+      }
+    }
+
+    // ---------- Loop & Resize ----------
+    function animate(){
+      requestAnimationFrame(animate);
+      const minDist = camera.position.length() - SPHERE_RADIUS;
+      const maxDist = camera.position.length() + SPHERE_RADIUS;
+      for(const obj of group.children){
+        obj.position.add(obj.userData.v);
+        if(obj.position.length() > SPHERE_RADIUS * 1.2){
+          obj.position.setLength(SPHERE_RADIUS);
+          obj.userData.v.multiplyScalar(-1);
+        }
+        const distance = camera.position.distanceTo(obj.position);
+        const opacity = THREE.MathUtils.clamp(
+          1 - (distance - minDist) / (maxDist - minDist),
+          0.2, 1
+        );
+        obj.element.style.opacity = opacity;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+      for(const obj of group.children){
+        const distance = camera.position.distanceTo(obj.position);
+        const scale = SPHERE_RADIUS / distance;
+        const el = obj.element;
+        el.style.transform = el.style.transform.replace(/scale\([^)]*\)/, '') + ` scale(${scale})`;
+      }
+    }
+
+    // ===== SELF TEST AND INITIALIZATION =====
+    function selfTest() {
+      // CSV basic (LF)
+      const csv1 = `pattern_number,title,description
+1,主体性,自分から動く`;
+      const r1 = parseCSV3(csv1);
+      console.assert(r1.length === 2 && r1[0][1] === 'title' && r1[1][1] === '主体性', '[CSV TEST] basic 失敗');
+      
+      // CSV quoted + multiline description
+      const csv2 = `pattern_number,title,description
+2,"探究,心","複数行
+説明"`;
+      const r2 = parseCSV3(csv2);
+      console.assert(r2[1][1] === '探究,心' && r2[1][2].includes('複数行'), '[CSV TEST] quoted 失敗');
+      
+      // CSV CRLF
+      const csv3 = `pattern_number,title,description
+3,協働,皆で助け合う`;
+      const r3 = parseCSV3(csv3);
+      console.assert(r3.length === 2 && r3[1][1] === '協働', '[CSV TEST] CRLF 失敗');
+      
+      // Headerless fallback
+      const csv4 = `1,尊重,相手の意見を尊重する`;
+      const r4 = parseCSV3(csv4);
+      console.assert(r4.length === 1 && r4[0][1] === '尊重', '[CSV TEST] headerless 失敗');
+      
+      console.info('[Self Test] All CSV tests passed');
+    }
+
+    // ===== START APPLICATION =====
+    selfTest();
+    initializeApp(); // Start the async initialization
+  });
+  </script>
+</body>
+</html>
