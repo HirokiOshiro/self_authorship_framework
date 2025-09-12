@@ -770,7 +770,7 @@
         
         // Skip header row and convert CSV data
         const sampleItems = [];
-        for (let i = 1; i < Math.min(rows.length, 51); i++) { // 最大50個のサンプルを読み込み
+        for (let i = 1; i < Math.min(rows.length, 71); i++) { // 最大70個のサンプルを読み込み
           const row = rows[i];
           if (row && row.length >= 3) {
             const title = (row[1] || '').trim();
