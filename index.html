@@ -867,7 +867,7 @@
         </div>
         
         <!-- 新規追加：フレーズクラウドセクション -->
-        <button class="toggle-button" onclick="togglePhrasesCloud()">💭 多様な声・問いを表示する <span class="toggle-icon" id="phrases-toggle-icon">▼</span></button>
+        <button class="toggle-button" onclick="togglePhrasesCloud()">💭 学生の疑問・関心を可視化する <span class="toggle-icon" id="phrases-toggle-icon">▼</span></button>
         
         <div class="phrases-cloud-section">
             
@@ -883,8 +883,8 @@
                 </div>
                 
                 <div class="phrases-cloud-description">
-                    <h4>上の3Dビューアについて</h4>
-                    <p>このビューアは、登録したフレーズを3D空間に表示させるものです。（※最初に表示されるテキストはサンプルとして作成したものです）</p>
+                    <h4>フレーズクラウドについて</h4>
+                    <p>このビューアは、設定したフレーズを3D空間に表示させるものです。</p>
                     <ul>
                         <li><strong>インタラクティブ表示：</strong>マウスで視点を自由に変更可能</li>
                         <li><strong>カテゴリ分類：</strong>色分けによる関心領域の可視化</li>
@@ -5341,22 +5341,30 @@
                 return shuffled.slice(0, colorCount);
             }
 
-            // 複数色マテリアルを作成
+            // 複数色マテリアルを作成（面単位での色付け対応）
             createMultiColorMaterial(geometry, colors) {
-                // 面の数を取得
+                // 面の数を取得（三角形面の数）
                 const faceCount = geometry.attributes.position.count / 3;
                 const faceColors = [];
                 
                 // 白色（未知なる可能性）の定義
                 const whiteColor = new THREE.Color(0xffffff);
                 
-                // 各面に色を割り当て
+                // 多面体の種類に応じた面グループ化を判定
+                const actualFaceCount = this.getActualFaceCount(geometry);
+                const trianglesPerFace = Math.round(faceCount / actualFaceCount);
+                
+                console.log(`[色付け] 三角形面数: ${faceCount}, 実際の面数: ${actualFaceCount}, 面あたり三角形数: ${trianglesPerFace}`);
+                
+                // 各三角形に色を割り当て（面単位でグループ化）
                 for (let i = 0; i < faceCount; i++) {
+                    // どの実際の面に属するかを計算
+                    const actualFaceIndex = Math.floor(i / trianglesPerFace);
                     let color;
                     
                     // 指定された色数までは多様な色、残りは白（未知なる可能性）
-                    if (i < colors.length) {
-                        color = new THREE.Color(colors[i]);
+                    if (actualFaceIndex < colors.length) {
+                        color = new THREE.Color(colors[actualFaceIndex]);
                     } else {
                         color = whiteColor; // 未知なる可能性を表現する白い面
                     }
@@ -5379,6 +5387,24 @@
                     shininess: 100,
                     wireframe: false
                 });
+            }
+
+            // 多面体の実際の面数を取得（三角分割前の面数）
+            getActualFaceCount(geometry) {
+                // ジオメトリの頂点数から多面体の種類を推定
+                const vertexCount = geometry.attributes.position.count;
+                const triangleCount = vertexCount / 3;
+                
+                // 各多面体の理論的な面数（Eulerの多面体公式を参考）
+                if (triangleCount <= 8) {
+                    return 4;  // 正四面体: 4面
+                } else if (triangleCount <= 16) {
+                    return 8;  // 正八面体: 8面
+                } else if (triangleCount <= 40) {
+                    return 12; // 正十二面体: 12面（各五角形面が3-4個の三角形に分割）
+                } else {
+                    return 20; // 正二十面体: 20面
+                }
             }
 
             initializeLightVeils() {
