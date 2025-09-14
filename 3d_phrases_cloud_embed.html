@@ -414,8 +414,12 @@
               自動回転
             </label>
             <label>
-              <input type="checkbox" id="combineDups" checked>
+              <input type="checkbox" id="combineDups">
               同じ言葉を集計して大きく表示
+            </label>
+            <label>
+              <input type="checkbox" id="enableFog">
+              fog エフェクト（3D奥行き効果）
             </label>
           </div>
         </details>
@@ -770,7 +774,7 @@
         
         // Skip header row and convert CSV data
         const sampleItems = [];
-        for (let i = 1; i < Math.min(rows.length, 71); i++) { // 最大70個のサンプルを読み込み
+        for (let i = 1; i < Math.min(rows.length, 51); i++) { // 最大50個のサンプルを読み込み
           const row = rows[i];
           if (row && row.length >= 3) {
             const title = (row[1] || '').trim();
@@ -832,7 +836,8 @@
     function setup3DScene() {
       holder = document.getElementById('canvas');
       scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2('#0b1020', 0.008);
+      // Fog is initially disabled for performance - can be enabled via UI
+      // scene.fog = new THREE.FogExp2('#0b1020', 0.008);
 
       camera = new THREE.PerspectiveCamera(
         70,
@@ -941,6 +946,16 @@
 
     function escapeHtml(s){ return s.replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c])); }
     function linkify(s){ const url=/((https?:\/\/)[^\s]+)/g; return escapeHtml(s).replace(url,'<a href="$1" target="_blank" rel="noopener">$1</a>'); }
+
+    // ===== FOG CONTROL FUNCTION =====
+    function toggleFog(enabled) {
+      if (!scene) return;
+      if (enabled) {
+        scene.fog = new THREE.FogExp2('#0b1020', 0.008);
+      } else {
+        scene.fog = null;
+      }
+    }
 
     // ===== CSV utilities =====
     function parseCSV3(text){
@@ -1071,6 +1086,7 @@
       // Control options
       on('autoRotate', 'change', (e) => { controls.autoRotate = e.target.checked; });
       on('combineDups', 'change', () => { refresh(); });
+      on('enableFog', 'change', (e) => { toggleFog(e.target.checked); });
 
       // Export/Import functionality
       on('exportBtn', 'click', () => {
